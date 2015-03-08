@@ -1,4 +1,4 @@
-# phm
+# phstl
 
 Convert [GDAL](http://www.gdal.org/) rasters to partial STL mesh. Intended to produce landscape models from GeoTIFF heightmaps. Rewrite of [hmstl](https://github.com/anoved/hmstl).
 
@@ -6,7 +6,7 @@ Convert [GDAL](http://www.gdal.org/) rasters to partial STL mesh. Intended to pr
 
 Currently:
 
-`./phm.py /path/to/heightmap.tif /path/to/output/mesh.stl`
+`./phstl.py /path/to/heightmap.tif /path/to/output/mesh.stl`
 
 Only the upper surface of the landscape is generated, so the mesh is not manifold.
 
