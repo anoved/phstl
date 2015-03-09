@@ -1,29 +1,35 @@
 #!/usr/bin/python
 
-# todo:
-# - validate elevation clip
-# - elevation scaling
-# - validate model scaling
-# - parse cli options
-
 from math import sqrt
 import sys
+import argparse
 
 import gdal
 import stl
 
-zscale = 0.1
-modelw = 75.0
-modelh = 90.0
+ap = argparse.ArgumentParser(description='Placeholder phstl description')
+ap.add_argument('--width', action='store', default=0.0, type=float, help='Width of model')
+ap.add_argument('--height', action='store', default=0.0, type=float, help='Height of model')
+ap.add_argument('infile', nargs='?')
+ap.add_argument('outfile', nargs='?')
 
+args = ap.parse_args()
+
+#
+#
+#
 def mapx(r, c):
 	return transform[0] + (c * transform[1]) + (r * transform[2])
 
+#
+#
+#
 def mapy(r, c):
 	return transform[3] + (c * transform[4]) + (r * transform[5])
 
 # return normal vector of triangle surface
 # t = (a, b, c) where a, b, and c are of form (x, y, z)
+#
 def norm(t):
 	
 	(ax, ay, az) = t[0]
@@ -49,31 +55,49 @@ def norm(t):
 	mag = sqrt((cpx * cpx) + (cpy * cpy) + (cpz * cpz))
 	return (cpx/mag, cpy/mag, cpz/mag)
 
+#
+#
+#
 def e2z(e):
 	return zscale * (float(e) - zmin)
-	# / 30.0
 
-imgpath = sys.argv[1]
-
-stlpath = sys.argv[2]
-
-mesh = stl.Solid(name="Surface")
-
-img = gdal.Open(imgpath)
-
+img = gdal.Open(args.infile)
 cols = img.RasterXSize
 rows = img.RasterYSize
 
-# used to convert pixel coordinates to world coordinates 
-#transform = img.GetGeoTransform()
+# Excise pixel output mode. It's only here because that's what hmstl did,
+# but we're doing this whole rewrite because hmstl doesn't quite do as needed.
+# Revise model mode to scale to fit rather than stretch. Then, we'll have a
+# single scale value that can be used to adjust the z values proprotionally.
+# Allow just one of width or height to be specified, in which case that
+# dimension will be used as the scaling target. If both are specified, scale
+# to fit (ie, select the smaller of the two implied scale factors).
 
-# convert pixel coordinates to model coordinates (stretch to fit extent)
-t = [0, 0, 0, 0, 0, 0]
-t[1] = modelw / (cols)
-t[5] = -modelh / (rows)
-t[0] = -(modelw / 2) + (t[1] / 2.0)
-t[3] = (modelh / 2) - (t[5] / 2.0)
-transform = t
+#~ zscale = 1.0
+#~ transform = [0, 0, 0, 0, 0, 0]
+#~ 
+ #~ args.mode == "model":
+	#~ if args.width == 0 or args.height == 0:
+		#~ print "must specify model --width and --height as well"
+		#~ exit(1)
+	#~ 
+	#~ # with 75 x 90, getting 74.49 x 89.52 extent
+	#~ 
+	#~ transform[1] =  (args.width / cols)
+	#~ transform[5] = -(args.height / rows)
+	#~ transform[0] = -(args.width / 2.0) # + (transform[1] / 2)
+	#~ transform[3] =  (args.height / 2.0) # - (transform[5] / 2)
+	#~ 
+	#~ zscale = (abs(transform[1]) + abs(transform[5])) / 2
+	#~ 
+#~ elif args.mode == "world":
+	#~ # getting flat z
+	#~ transform = img.GetGeoTransform()
+	#~ # zscale 1 for world coords
+	#~ zscale = 1.0
+
+transform = img.GetGeoTransform()
+zscale = 1.0
 
 band = img.GetRasterBand(1)
 
@@ -81,12 +105,13 @@ band = img.GetRasterBand(1)
 # may use data min for z clipping
 stats = band.GetStatistics(True, True)
 zmin = stats[0]
-print zmin
 
 # use for masking (omit pixels with this value)
 nodata = band.GetNoDataValue()
 
 data = band.ReadAsArray()
+
+mesh = stl.Solid(name="Surface")
 
 for col in range(cols - 1):
 	for row in range(rows - 1):
@@ -124,7 +149,8 @@ for col in range(cols - 1):
 		if de != nodata:
 			mesh.add_facet(norm(t2), t2)
 
-stl = open(stlpath, 'w')
+
+stl = open(args.outfile, 'w')
 mesh.write_binary(stl)
 stl.close()
 
