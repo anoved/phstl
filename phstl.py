@@ -10,6 +10,7 @@ import stl
 ap = argparse.ArgumentParser(description='Placeholder phstl description')
 ap.add_argument('--width', action='store', default=0.0, type=float, help='Width of model')
 ap.add_argument('--height', action='store', default=0.0, type=float, help='Height of model')
+ap.add_argument('-z', action='store', default=1.0, type=float, help='Vertical scaling')
 ap.add_argument('infile', nargs='?')
 ap.add_argument('outfile', nargs='?')
 
@@ -67,7 +68,7 @@ rows = img.RasterYSize
 
 transform = img.GetGeoTransform()
 xyres = transform[1]
-zscale = 1.0
+zscale = args.z
 
 if args.width != 0.0 or args.height != 0.0:
 	
@@ -78,7 +79,7 @@ if args.width != 0.0 or args.height != 0.0:
 	elif args.height != 0.0:
 		pixel_scale = args.height / (rows - 1)
 	
-	zscale = pixel_scale / xyres
+	zscale *= pixel_scale / xyres
 	transform = (
 			-pixel_scale * (cols - 1) / 2.0,
 			pixel_scale,
