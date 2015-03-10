@@ -4,9 +4,19 @@ Convert [GDAL](http://www.gdal.org/) rasters to partial STL mesh. Intended to pr
 
 ## Usage
 
-Currently:
-
-`./phstl.py /path/to/heightmap.tif /path/to/output/mesh.stl`
+    usage: phstl.py [-h] [-x X] [-y Y] [-z Z] RASTER STL
+    
+    Convert a GDAL raster (like a GeoTIFF heightmap) to an STL terrain surface.
+    
+    positional arguments:
+      RASTER      Input heightmap image
+      STL         Output terrain mesh
+    
+    optional arguments:
+      -h, --help  show this help message and exit
+      -x X        Scale output to fit x extent
+      -y Y        Scale output to fit y extent
+      -z Z        Vertical scale factor
 
 Only the upper surface of the landscape is generated, so the mesh is not manifold.
 

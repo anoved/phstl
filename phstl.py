@@ -7,13 +7,12 @@ import argparse
 import gdal
 import stl
 
-ap = argparse.ArgumentParser(description='Placeholder phstl description')
-ap.add_argument('--width', action='store', default=0.0, type=float, help='Width of model')
-ap.add_argument('--height', action='store', default=0.0, type=float, help='Height of model')
-ap.add_argument('-z', action='store', default=1.0, type=float, help='Vertical scaling')
-ap.add_argument('infile', nargs='?')
-ap.add_argument('outfile', nargs='?')
-
+ap = argparse.ArgumentParser(description='Convert a GDAL raster (like a GeoTIFF heightmap) to an STL terrain surface.')
+ap.add_argument('-x', action='store', default=0.0, type=float, help='Scale output to fit x extent')
+ap.add_argument('-y', action='store', default=0.0, type=float, help='Scale output to fit y extent')
+ap.add_argument('-z', action='store', default=1.0, type=float, help='Vertical scale factor')
+ap.add_argument('RASTER', help='Input heightmap image')
+ap.add_argument('STL', help='Output terrain mesh')
 args = ap.parse_args()
 
 #
@@ -62,7 +61,7 @@ def norm(t):
 def e2z(e):
 	return zscale * (float(e) - zmin)
 
-img = gdal.Open(args.infile)
+img = gdal.Open(args.RASTER)
 cols = img.RasterXSize
 rows = img.RasterYSize
 
@@ -70,14 +69,14 @@ transform = img.GetGeoTransform()
 xyres = transform[1]
 zscale = args.z
 
-if args.width != 0.0 or args.height != 0.0:
+if args.x != 0.0 or args.y != 0.0:
 	
-	if args.width != 0.0 and args.height != 0.0:
-		pixel_scale = min(args.width / (cols - 1), args.height / (rows - 1))
-	elif args.width != 0.0:
-		pixel_scale = args.width / (cols - 1)
-	elif args.height != 0.0:
-		pixel_scale = args.height / (rows - 1)
+	if args.x != 0.0 and args.y != 0.0:
+		pixel_scale = min(args.x / (cols - 1), args.y / (rows - 1))
+	elif args.x != 0.0:
+		pixel_scale = args.x / (cols - 1)
+	elif args.y != 0.0:
+		pixel_scale = args.y / (rows - 1)
 	
 	zscale *= pixel_scale / xyres
 	transform = (
@@ -140,7 +139,7 @@ for col in range(cols - 1):
 			mesh.add_facet(norm(t2), t2)
 
 
-stl = open(args.outfile, 'w')
+stl = open(args.STL, 'w')
 mesh.write_binary(stl)
 stl.close()
 
