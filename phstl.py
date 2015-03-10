@@ -65,39 +65,26 @@ img = gdal.Open(args.infile)
 cols = img.RasterXSize
 rows = img.RasterYSize
 
-# Excise pixel output mode. It's only here because that's what hmstl did,
-# but we're doing this whole rewrite because hmstl doesn't quite do as needed.
-# Revise model mode to scale to fit rather than stretch. Then, we'll have a
-# single scale value that can be used to adjust the z values proprotionally.
-# Allow just one of width or height to be specified, in which case that
-# dimension will be used as the scaling target. If both are specified, scale
-# to fit (ie, select the smaller of the two implied scale factors).
-
-#~ zscale = 1.0
-#~ transform = [0, 0, 0, 0, 0, 0]
-#~ 
- #~ args.mode == "model":
-	#~ if args.width == 0 or args.height == 0:
-		#~ print "must specify model --width and --height as well"
-		#~ exit(1)
-	#~ 
-	#~ # with 75 x 90, getting 74.49 x 89.52 extent
-	#~ 
-	#~ transform[1] =  (args.width / cols)
-	#~ transform[5] = -(args.height / rows)
-	#~ transform[0] = -(args.width / 2.0) # + (transform[1] / 2)
-	#~ transform[3] =  (args.height / 2.0) # - (transform[5] / 2)
-	#~ 
-	#~ zscale = (abs(transform[1]) + abs(transform[5])) / 2
-	#~ 
-#~ elif args.mode == "world":
-	#~ # getting flat z
-	#~ transform = img.GetGeoTransform()
-	#~ # zscale 1 for world coords
-	#~ zscale = 1.0
-
 transform = img.GetGeoTransform()
 zscale = 1.0
+
+if args.width != 0.0 or args.height != 0.0:
+	
+	if args.width != 0.0 and args.height != 0.0:
+		pixel_scale = min(args.width / (cols - 1), args.height / (rows - 1))
+	elif args.width != 0.0:
+		pixel_scale = args.width / (cols - 1)
+	elif args.height != 0.0:
+		pixel_scale = args.height / (rows - 1)
+	
+	transform = (
+			-pixel_scale * (cols - 1) / 2.0,
+			pixel_scale,
+			0,
+			pixel_scale * (rows - 1) / 2.0,
+			0,
+			-pixel_scale
+	)
 
 band = img.GetRasterBand(1)
 
