@@ -66,6 +66,7 @@ cols = img.RasterXSize
 rows = img.RasterYSize
 
 transform = img.GetGeoTransform()
+xyres = transform[1]
 zscale = 1.0
 
 if args.width != 0.0 or args.height != 0.0:
@@ -77,6 +78,7 @@ if args.width != 0.0 or args.height != 0.0:
 	elif args.height != 0.0:
 		pixel_scale = args.height / (rows - 1)
 	
+	zscale = pixel_scale / xyres
 	transform = (
 			-pixel_scale * (cols - 1) / 2.0,
 			pixel_scale,
