@@ -8,8 +8,8 @@ import gdal
 import stl
 
 ap = argparse.ArgumentParser(description='Convert a GDAL raster (like a GeoTIFF heightmap) to an STL terrain surface.')
-ap.add_argument('-x', action='store', default=0.0, type=float, help='Scale output to fit x extent')
-ap.add_argument('-y', action='store', default=0.0, type=float, help='Scale output to fit y extent')
+ap.add_argument('-x', action='store', default=0.0, type=float, help='Fit output x to extent (mm)')
+ap.add_argument('-y', action='store', default=0.0, type=float, help='Fit output y to extent (mm)')
 ap.add_argument('-z', action='store', default=1.0, type=float, help='Vertical scale factor')
 ap.add_argument('RASTER', help='Input heightmap image')
 ap.add_argument('STL', help='Output terrain mesh')
