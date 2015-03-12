@@ -11,6 +11,7 @@ ap = argparse.ArgumentParser(description='Convert a GDAL raster (like a GeoTIFF 
 ap.add_argument('-x', action='store', default=0.0, type=float, help='Fit output x to extent (mm)')
 ap.add_argument('-y', action='store', default=0.0, type=float, help='Fit output y to extent (mm)')
 ap.add_argument('-z', action='store', default=1.0, type=float, help='Vertical scale factor')
+ap.add_argument('-c', action='store_true', default=False, help='Clip z to minimum elevation')
 ap.add_argument('RASTER', help='Input heightmap image')
 ap.add_argument('STL', help='Output terrain mesh')
 args = ap.parse_args()
@@ -93,7 +94,10 @@ band = img.GetRasterBand(1)
 # min, max, mean, sd
 # may use data min for z clipping
 stats = band.GetStatistics(True, True)
-zmin = stats[0]
+if args.c == True:
+	zmin = stats[0]
+else:
+	zmin = 0
 
 # use for masking (omit pixels with this value)
 nodata = band.GetNoDataValue()
