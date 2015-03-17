@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+# review cols width -1 stuff... I think it stretches it a wee bit much
+
 from math import sqrt
 import sys
 import argparse
@@ -12,6 +14,7 @@ ap.add_argument('-x', action='store', default=0.0, type=float, help='Fit output 
 ap.add_argument('-y', action='store', default=0.0, type=float, help='Fit output y to extent (mm)')
 ap.add_argument('-z', action='store', default=1.0, type=float, help='Vertical scale factor')
 ap.add_argument('-b', action='store', default=0.0, type=float, help='Base height')
+ap.add_argument('-e', action='store_true', default=False, help='Enclose volume beneath surface')
 ap.add_argument('-c', action='store_true', default=False, help='Clip z to minimum elevation')
 ap.add_argument('RASTER', help='Input heightmap image')
 ap.add_argument('STL', help='Output terrain mesh')
@@ -63,6 +66,13 @@ def norm(t):
 def e2z(e):
 	return (zscale * (float(e) - zmin)) + args.b
 
+def quad(m, a, b, c, d):
+	t1 = (a, b, c)
+	t2 = (d, c, b)
+	m.add_facet(norm(t1), t1)
+	m.add_facet(norm(t2), t2)
+
+
 img = gdal.Open(args.RASTER)
 cols = img.RasterXSize
 rows = img.RasterYSize
@@ -89,6 +99,8 @@ if args.x != 0.0 or args.y != 0.0:
 			0,
 			-pixel_scale
 	)
+
+print transform
 
 band = img.GetRasterBand(1)
 
@@ -142,6 +154,32 @@ for col in range(cols - 1):
 		
 		if de != nodata:
 			mesh.add_facet(norm(t2), t2)
+		
+		# walls and floor for this pixel]
+		# (disregards nodata conditional)
+		if args.e:
+			
+			if col == 0:
+				# left wall
+				quad(mesh, (ax, ay, az), (ax, ay, 0), (bx, by, bz), (bx, by, 0))
+			
+			if col == cols - 2:
+				# right wall
+				quad(mesh, (dx, dy, dz), (dx, dy, 0), (cx, cy, cz), (cx, cy, 0))
+			
+			if row == 0:
+				# top wall
+				quad(mesh, (cx, cy, cz), (cx, cy, 0), (ax, ay, az), (ax, ay, 0))
+			
+			if row == rows - :
+				# bottom wall
+				quad(mesh, (bx, by, bz), (bx, by, 0), (dx, dy, dz), (dx, dy, 0))
+			
+			# floor
+			quad(mesh, (ax, ay, 0), (cx, cy, 0), (bx, by, 0), (dx, dy, 0))
+		
+
+
 
 
 stl = open(args.STL, 'w')
