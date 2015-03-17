@@ -14,11 +14,15 @@ ap.add_argument('-x', action='store', default=0.0, type=float, help='Fit output 
 ap.add_argument('-y', action='store', default=0.0, type=float, help='Fit output y to extent (mm)')
 ap.add_argument('-z', action='store', default=1.0, type=float, help='Vertical scale factor')
 ap.add_argument('-b', action='store', default=0.0, type=float, help='Base height')
-ap.add_argument('-e', action='store_true', default=False, help='Enclose volume beneath surface')
+ap.add_argument('-m', action='store', default='surface', choices=['surface', 'solid', 'box'], help='Model mode. Base height must be >0 for solid or box.')
 ap.add_argument('-c', action='store_true', default=False, help='Clip z to minimum elevation')
 ap.add_argument('RASTER', help='Input heightmap image')
 ap.add_argument('STL', help='Output terrain mesh')
 args = ap.parse_args()
+
+if args.m != 'surface' and args.b == 0:
+	print >> sys.stderr, "Nonzero base height required for selected mode."
+	exit(1)
 
 #
 #
@@ -155,34 +159,38 @@ for col in range(cols - 1):
 		if de != nodata:
 			mesh.add_facet(norm(t2), t2)
 		
-		# walls and floor for this pixel]
-		# (disregards nodata conditional)
-		if args.e:
+		if args.m != 'surface':
 			
+			faz = 0
+			fbz = 0
+			fcz = 0
+			fdz = 0
+			
+			if args.m == 'solid':
+				faz = az - args.b
+				fbz = bz - args.b
+				fcz = cz - args.b
+				fdz = dz - args.b
+			
+			# left wall
 			if col == 0:
-				# left wall
-				quad(mesh, (ax, ay, az), (ax, ay, 0), (bx, by, bz), (bx, by, 0))
+				quad(mesh, (ax, ay, az), (ax, ay, faz), (bx, by, bz), (bx, by, fbz))
 			
+			# right wall
 			if col == cols - 2:
-				# right wall
-				quad(mesh, (dx, dy, dz), (dx, dy, 0), (cx, cy, cz), (cx, cy, 0))
+				quad(mesh, (dx, dy, dz), (dx, dy, fdz), (cx, cy, cz), (cx, cy, fcz))
 			
+			# top wall
 			if row == 0:
-				# top wall
-				quad(mesh, (cx, cy, cz), (cx, cy, 0), (ax, ay, az), (ax, ay, 0))
+				quad(mesh, (cx, cy, cz), (cx, cy, fcz), (ax, ay, az), (ax, ay, faz))
 			
+			# bottom wall
 			if row == rows - 2:
-				# bottom wall
-				quad(mesh, (bx, by, bz), (bx, by, 0), (dx, dy, dz), (dx, dy, 0))
+				quad(mesh, (bx, by, bz), (bx, by, fbz), (dx, dy, dz), (dx, dy, fdz))
 			
 			# floor
-			quad(mesh, (ax, ay, 0), (cx, cy, 0), (bx, by, 0), (dx, dy, 0))
-		
-
-
-
+			quad(mesh, (ax, ay, faz), (cx, cy, fcz), (bx, by, fbz), (dx, dy, fdz))
 
 stl = open(args.STL, 'w')
 mesh.write_binary(stl)
 stl.close()
-
