@@ -171,7 +171,7 @@ for col in range(cols - 1):
 				# top wall
 				quad(mesh, (cx, cy, cz), (cx, cy, 0), (ax, ay, az), (ax, ay, 0))
 			
-			if row == rows - :
+			if row == rows - 2:
 				# bottom wall
 				quad(mesh, (bx, by, bz), (bx, by, 0), (dx, dy, dz), (dx, dy, 0))
 			
