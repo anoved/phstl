@@ -96,9 +96,9 @@ def NormalVector(t):
 #
 # AddTri
 #
-# a-b
+# a-c
 # |/
-# c
+# b
 #
 # Parameters:
 #  m: the stl mesh to add the tri to
@@ -113,9 +113,9 @@ def AddTri(m, t):
 #
 # AddQuad
 #
-# a-b
+# a-c
 # |/|
-# c-d
+# b-d
 #
 # Parameters:
 #  m: the stl mesh to add the quad to
@@ -163,16 +163,12 @@ print transform
 
 band = img.GetRasterBand(1)
 
-# min, max, mean, sd
-# may use data min for z clipping
+# min, max, mean, sd; min used for z clipping
 stats = band.GetStatistics(True, True)
 if args.clip == True:
 	zmin = stats[0]
 else:
 	zmin = 0
-
-# use for masking (omit pixels with this value)
-nodata = band.GetNoDataValue()
 
 data = band.ReadAsArray()
 
@@ -189,15 +185,11 @@ for col in range(cols - 1):
 		bx = mapx(row + 1, col)
 		by = mapy(row + 1, col)
 		be = data[row + 1, col]
-		if be == nodata:
-			continue
 		bz = ZElevation(be)
 
 		cx = mapx(row, col + 1)
 		cy = mapy(row, col + 1)
 		ce = data[row, col + 1]
-		if ce == nodata:
-			continue
 		cz = ZElevation(ce)
 
 		dx = mapx(row + 1, col + 1)
@@ -205,15 +197,8 @@ for col in range(cols - 1):
 		de = data[row + 1, col + 1]
 		dz = ZElevation(de)
 
-		t1 = ((ax, ay, az), (bx, by, bz), (cx, cy, cz))
-		t2 = ((dx, dy, dz), (cx, cy, cz), (bx, by, bz))
+		AddQuad(mesh, (ax, ay, az), (bx, by, bz), (cx, cy, cz), (dx, dy, dz))
 
-		if ae != nodata:
-			AddTri(mesh, t1)
-		
-		if de != nodata:
-			AddTri(mesh, t2)
-		
 		if args.mode != 'surface':
 			
 			faz = 0
