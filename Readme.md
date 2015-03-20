@@ -1,25 +1,30 @@
 # phstl
 
-Convert [GDAL](http://www.gdal.org/) rasters to partial STL mesh. Intended to produce landscape models from GeoTIFF heightmaps. Rewrite of [hmstl](https://github.com/anoved/hmstl).
+Convert [GDAL](http://www.gdal.org/) rasters to STL mesh. Intended to produce landscape models from GeoTIFF heightmaps. Rewrite of [hmstl](https://github.com/anoved/hmstl).
 
 ## Usage
 
-    usage: phstl.py [-h] [-x X] [-y Y] [-z Z] RASTER STL
+    usage: phstl.py [-h] [-x X] [-y Y] [-z Z] [-b BASE] [-m {surface,solid,box}]
+                    [-c]
+                    RASTER STL
     
     Convert a GDAL raster (like a GeoTIFF heightmap) to an STL terrain surface.
     
     positional arguments:
-      RASTER      Input heightmap image
-      STL         Output terrain mesh
+      RASTER                Input heightmap image
+      STL                   Output terrain mesh
     
     optional arguments:
-      -h, --help  show this help message and exit
-      -x X        Scale output to fit x extent
-      -y Y        Scale output to fit y extent
-      -z Z        Vertical scale factor
+      -h, --help            show this help message and exit
+      -x X                  Fit output x to extent (mm)
+      -y Y                  Fit output y to extent (mm)
+      -z Z                  Vertical scale factor
+      -b BASE, --base BASE  Base height
+      -m {surface,solid,box}, --mode {surface,solid,box}
+                            Model mode. Base height must be >0 for solid or box.
+      -c, --clip            Clip z to minimum elevation
 
-Only the upper surface of the landscape is generated, so the mesh is not manifold.
-
+Default `-z` scale factor is `1`. Default `--mode` is `surface`, yielding a partial mesh. Default `--base` height is `0` (must be nonzero for `solid` or `box` mode). Elevation `--clip` is disabled by default.
 
 ## Prerequisites
 
