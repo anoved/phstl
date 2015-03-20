@@ -31,4 +31,6 @@ Default `-z` scale factor is `1`. Default `--mode` is `surface`, yielding a part
 - [GDAL/OGR in Python](http://trac.osgeo.org/gdal/wiki/GdalOgrInPython) (`sudo easy_install gdal`)
 - [Python-STL](https://github.com/apparentlymart/python-stl) (`sudo pip install stl`)
 
+## License
 
+This project is released under an open source MIT license.
