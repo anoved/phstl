@@ -90,12 +90,25 @@ def NormalVector(t):
 def ZElevation(e):
 	return (zscale * (float(e) - zmin)) + args.base
 
-def quad(m, a, b, c, d):
+#
+# AddQuad
+#
+# a-b
+# |/|
+# c-d
+#
+# Parameters:
+#  m: the stl mesh to add the quad to
+#  a, b, c, d: vertices (x y z tuples)
+#
+# Results:
+#  adds two triangle facets to mesh
+#
+def AddQuad(m, a, b, c, d):
 	t1 = (a, b, c)
 	t2 = (d, c, b)
 	m.add_facet(NormalVector(t1), t1)
 	m.add_facet(NormalVector(t2), t2)
-
 
 try:
 	img = gdal.Open(args.RASTER)
@@ -198,22 +211,22 @@ for col in range(cols - 1):
 			
 			# left wall
 			if col == 0:
-				quad(mesh, (ax, ay, az), (ax, ay, faz), (bx, by, bz), (bx, by, fbz))
+				AddQuad(mesh, (ax, ay, az), (ax, ay, faz), (bx, by, bz), (bx, by, fbz))
 			
 			# right wall
 			if col == cols - 2:
-				quad(mesh, (dx, dy, dz), (dx, dy, fdz), (cx, cy, cz), (cx, cy, fcz))
+				AddQuad(mesh, (dx, dy, dz), (dx, dy, fdz), (cx, cy, cz), (cx, cy, fcz))
 			
 			# top wall
 			if row == 0:
-				quad(mesh, (cx, cy, cz), (cx, cy, fcz), (ax, ay, az), (ax, ay, faz))
+				AddQuad(mesh, (cx, cy, cz), (cx, cy, fcz), (ax, ay, az), (ax, ay, faz))
 			
 			# bottom wall
 			if row == rows - 2:
-				quad(mesh, (bx, by, bz), (bx, by, fbz), (dx, dy, dz), (dx, dy, fdz))
+				AddQuad(mesh, (bx, by, bz), (bx, by, fbz), (dx, dy, dz), (dx, dy, fdz))
 			
 			# floor
-			quad(mesh, (ax, ay, faz), (cx, cy, fcz), (bx, by, fbz), (dx, dy, fdz))
+			AddQuad(mesh, (ax, ay, faz), (cx, cy, fcz), (bx, by, fbz), (dx, dy, fdz))
 
 stl = open(args.STL, 'w')
 mesh.write_binary(stl)
