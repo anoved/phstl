@@ -42,10 +42,28 @@ def mapy(r, c):
 	return transform[3] + (c * transform[4]) + (r * transform[5])
 
 #
-# NormalVector
+# ZElevation
+#
+# Convert an elevation value to output Z units. Applies clipping to minimum
+# elevation (zmin, if nonzero); z scaling (and exaggeration); and base offset.
 #
 # Parameters:
-#  tuple of triangle vertices (nested x y z tuples)
+#  elevation
+#
+# Returns;
+#  z value
+#
+def ZElevation(e):
+	return (zscale * (float(e) - zmin)) + args.base
+
+#
+# NormalVector
+#
+# Calculate the normal vector of a triangle. (Unit vector perpendicular to
+# triangle surface, pointing away from the "outer" face of the surface.)
+#
+# Parameters:
+#  triangle vertices (nested x y z tuples)
 #
 # Returns:
 #  normal vector (x y z tuple)
@@ -76,19 +94,21 @@ def NormalVector(t):
 	return (cpx/mag, cpy/mag, cpz/mag)
 
 #
-# ZElevation
+# AddTri
 #
-# Convert an elevation value to output Z units. Applies clipping to minimum
-# elevation (zmin, if nonzero); z scaling (and exaggeration); and base offset.
+# a-b
+# |/
+# c
 #
 # Parameters:
-#  elevation
+#  m: the stl mesh to add the tri to
+#  t: triangle vertices (a b c as nested x y z tuples)
 #
-# Returns;
-#  z value
+# Results:
+#  adds triangle facet to mesh
 #
-def ZElevation(e):
-	return (zscale * (float(e) - zmin)) + args.base
+def AddTri(m, t):
+	m.add_facet(NormalVector(t), t)
 
 #
 # AddQuad
@@ -105,10 +125,8 @@ def ZElevation(e):
 #  adds two triangle facets to mesh
 #
 def AddQuad(m, a, b, c, d):
-	t1 = (a, b, c)
-	t2 = (d, c, b)
-	m.add_facet(NormalVector(t1), t1)
-	m.add_facet(NormalVector(t2), t2)
+	AddTri(m, (a, b, c))
+	AddTri(m, (d, c, b))
 
 try:
 	img = gdal.Open(args.RASTER)
@@ -191,10 +209,10 @@ for col in range(cols - 1):
 		t2 = ((dx, dy, dz), (cx, cy, cz), (bx, by, bz))
 
 		if ae != nodata:
-			mesh.add_facet(NormalVector(t1), t1)
+			AddTri(mesh, t1)
 		
 		if de != nodata:
-			mesh.add_facet(NormalVector(t2), t2)
+			AddTri(mesh, t2)
 		
 		if args.mode != 'surface':
 			
