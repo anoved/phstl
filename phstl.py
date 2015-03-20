@@ -30,19 +30,35 @@ if args.mode != 'surface' and args.base == 0:
 	fail("Nonzero base height required for selected mode.")
 
 #
+# XCoordinate
 #
+# Apply affine transformation to get output X coordinate from image coordinates.
 #
-def mapx(r, c):
+# Parameters:
+#  r, c: row, column image coordinates
+#
+# Returns:
+#  x value
+#
+def XCoordinate(r, c):
 	return transform[0] + (c * transform[1]) + (r * transform[2])
 
 #
+# YCoordinate
 #
+# Apply affine transformation to get output Y coordinate from image coordinates.
 #
-def mapy(r, c):
+# Parameters:
+#  r, c: row, column image coordinates
+#
+# Returns:
+#  y value
+#
+def YCoordinate(r, c):
 	return transform[3] + (c * transform[4]) + (r * transform[5])
 
 #
-# ZElevation
+# ZCoordinate
 #
 # Convert an elevation value to output Z units. Applies clipping to minimum
 # elevation (zmin, if nonzero); z scaling (and exaggeration); and base offset.
@@ -53,7 +69,7 @@ def mapy(r, c):
 # Returns;
 #  z value
 #
-def ZElevation(e):
+def ZCoordinate(e):
 	return (zscale * (float(e) - zmin)) + args.base
 
 #
@@ -177,21 +193,21 @@ mesh = stl.Solid(name="Surface")
 for col in range(cols - 1):
 	for row in range(rows - 1):
 
-		ax = mapx(row, col)
-		ay = mapy(row, col)
-		az = ZElevation(data[row, col])
+		ax = XCoordinate(row, col)
+		ay = YCoordinate(row, col)
+		az = ZCoordinate(data[row, col])
 
-		bx = mapx(row + 1, col)
-		by = mapy(row + 1, col)
-		bz = ZElevation(data[row + 1, col])
+		bx = XCoordinate(row + 1, col)
+		by = YCoordinate(row + 1, col)
+		bz = ZCoordinate(data[row + 1, col])
 
-		cx = mapx(row, col + 1)
-		cy = mapy(row, col + 1)
-		cz = ZElevation(data[row, col + 1])
+		cx = XCoordinate(row, col + 1)
+		cy = YCoordinate(row, col + 1)
+		cz = ZCoordinate(data[row, col + 1])
 
-		dx = mapx(row + 1, col + 1)
-		dy = mapy(row + 1, col + 1)
-		dz = ZElevation(data[row + 1, col + 1])
+		dx = XCoordinate(row + 1, col + 1)
+		dy = YCoordinate(row + 1, col + 1)
+		dz = ZCoordinate(data[row + 1, col + 1])
 
 		AddQuad(mesh, (ax, ay, az), (bx, by, bz), (cx, cy, cz), (dx, dy, dz))
 
