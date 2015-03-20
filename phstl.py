@@ -41,10 +41,16 @@ def mapx(r, c):
 def mapy(r, c):
 	return transform[3] + (c * transform[4]) + (r * transform[5])
 
-# return normal vector of triangle surface
-# t = (a, b, c) where a, b, and c are of form (x, y, z)
 #
-def norm(t):
+# NormalVector
+#
+# Parameters:
+#  tuple of triangle vertices (nested x y z tuples)
+#
+# Returns:
+#  normal vector (x y z tuple)
+#
+def NormalVector(t):
 	
 	(ax, ay, az) = t[0]
 	(bx, by, bz) = t[1]
@@ -78,8 +84,8 @@ def e2z(e):
 def quad(m, a, b, c, d):
 	t1 = (a, b, c)
 	t2 = (d, c, b)
-	m.add_facet(norm(t1), t1)
-	m.add_facet(norm(t2), t2)
+	m.add_facet(NormalVector(t1), t1)
+	m.add_facet(NormalVector(t2), t2)
 
 
 try:
@@ -163,10 +169,10 @@ for col in range(cols - 1):
 		t2 = ((dx, dy, dz), (cx, cy, cz), (bx, by, bz))
 
 		if ae != nodata:
-			mesh.add_facet(norm(t1), t1)
+			mesh.add_facet(NormalVector(t1), t1)
 		
 		if de != nodata:
-			mesh.add_facet(norm(t2), t2)
+			mesh.add_facet(NormalVector(t2), t2)
 		
 		if args.mode != 'surface':
 			
