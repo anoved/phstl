@@ -179,23 +179,19 @@ for col in range(cols - 1):
 
 		ax = mapx(row, col)
 		ay = mapy(row, col)
-		ae = data[row, col]
-		az = ZElevation(ae)
+		az = ZElevation(data[row, col])
 
 		bx = mapx(row + 1, col)
 		by = mapy(row + 1, col)
-		be = data[row + 1, col]
-		bz = ZElevation(be)
+		bz = ZElevation(data[row + 1, col])
 
 		cx = mapx(row, col + 1)
 		cy = mapy(row, col + 1)
-		ce = data[row, col + 1]
-		cz = ZElevation(ce)
+		cz = ZElevation(data[row, col + 1])
 
 		dx = mapx(row + 1, col + 1)
 		dy = mapy(row + 1, col + 1)
-		de = data[row + 1, col + 1]
-		dz = ZElevation(de)
+		dz = ZElevation(data[row + 1, col + 1])
 
 		AddQuad(mesh, (ax, ay, az), (bx, by, bz), (cx, cy, cz), (dx, dy, dz))
 
