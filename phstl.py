@@ -37,6 +37,9 @@ if args.mode != 'surface' and args.base == 0:
 # Parameters:
 #  r, c: row, column image coordinates
 #
+# Accesses:
+#  transform tuple
+#
 # Returns:
 #  x value
 #
@@ -50,6 +53,9 @@ def XCoordinate(r, c):
 #
 # Parameters:
 #  r, c: row, column image coordinates
+#
+# Accesses:
+#  transform tuple
 #
 # Returns:
 #  y value
@@ -66,7 +72,10 @@ def YCoordinate(r, c):
 # Parameters:
 #  elevation
 #
-# Returns;
+# Accesses:
+#  zscale, zmin, and args.base
+#
+# Returns:
 #  z value
 #
 def ZCoordinate(e):
