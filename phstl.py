@@ -9,20 +9,25 @@ import argparse
 import gdal
 import stl
 
+gdal.UseExceptions()
+
+def fail(msg):
+	print >> sys.stderr, msg
+	exit(1)
+
 ap = argparse.ArgumentParser(description='Convert a GDAL raster (like a GeoTIFF heightmap) to an STL terrain surface.')
 ap.add_argument('-x', action='store', default=0.0, type=float, help='Fit output x to extent (mm)')
 ap.add_argument('-y', action='store', default=0.0, type=float, help='Fit output y to extent (mm)')
 ap.add_argument('-z', action='store', default=1.0, type=float, help='Vertical scale factor')
-ap.add_argument('-b', action='store', default=0.0, type=float, help='Base height')
-ap.add_argument('-m', action='store', default='surface', choices=['surface', 'solid', 'box'], help='Model mode. Base height must be >0 for solid or box.')
-ap.add_argument('-c', action='store_true', default=False, help='Clip z to minimum elevation')
+ap.add_argument('-b', '--base', action='store', default=0.0, type=float, help='Base height')
+ap.add_argument('-m', '--mode', action='store', default='surface', choices=['surface', 'solid', 'box'], help='Model mode. Base height must be >0 for solid or box.')
+ap.add_argument('-c', '--clip', action='store_true', default=False, help='Clip z to minimum elevation')
 ap.add_argument('RASTER', help='Input heightmap image')
 ap.add_argument('STL', help='Output terrain mesh')
 args = ap.parse_args()
 
-if args.m != 'surface' and args.b == 0:
-	print >> sys.stderr, "Nonzero base height required for selected mode."
-	exit(1)
+if args.mode != 'surface' and args.base == 0:
+	fail("Nonzero base height required for selected mode.")
 
 #
 #
@@ -68,7 +73,7 @@ def norm(t):
 #
 #
 def e2z(e):
-	return (zscale * (float(e) - zmin)) + args.b
+	return (zscale * (float(e) - zmin)) + args.base
 
 def quad(m, a, b, c, d):
 	t1 = (a, b, c)
@@ -77,7 +82,11 @@ def quad(m, a, b, c, d):
 	m.add_facet(norm(t2), t2)
 
 
-img = gdal.Open(args.RASTER)
+try:
+	img = gdal.Open(args.RASTER)
+except RuntimeError, e:
+	fail(str(e).strip())
+
 cols = img.RasterXSize
 rows = img.RasterYSize
 
@@ -111,7 +120,7 @@ band = img.GetRasterBand(1)
 # min, max, mean, sd
 # may use data min for z clipping
 stats = band.GetStatistics(True, True)
-if args.c == True:
+if args.clip == True:
 	zmin = stats[0]
 else:
 	zmin = 0
@@ -159,18 +168,18 @@ for col in range(cols - 1):
 		if de != nodata:
 			mesh.add_facet(norm(t2), t2)
 		
-		if args.m != 'surface':
+		if args.mode != 'surface':
 			
 			faz = 0
 			fbz = 0
 			fcz = 0
 			fdz = 0
 			
-			if args.m == 'solid':
-				faz = az - args.b
-				fbz = bz - args.b
-				fcz = cz - args.b
-				fdz = dz - args.b
+			if args.mode == 'solid':
+				faz = az - args.base
+				fbz = bz - args.base
+				fcz = cz - args.base
+				fdz = dz - args.base
 			
 			# left wall
 			if col == 0:
