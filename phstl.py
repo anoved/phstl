@@ -76,9 +76,18 @@ def NormalVector(t):
 	return (cpx/mag, cpy/mag, cpz/mag)
 
 #
+# ZElevation
 #
+# Convert an elevation value to output Z units. Applies clipping to minimum
+# elevation (zmin, if nonzero); z scaling (and exaggeration); and base offset.
 #
-def e2z(e):
+# Parameters:
+#  elevation
+#
+# Returns;
+#  z value
+#
+def ZElevation(e):
 	return (zscale * (float(e) - zmin)) + args.base
 
 def quad(m, a, b, c, d):
@@ -144,26 +153,26 @@ for col in range(cols - 1):
 		ax = mapx(row, col)
 		ay = mapy(row, col)
 		ae = data[row, col]
-		az = e2z(ae)
+		az = ZElevation(ae)
 
 		bx = mapx(row + 1, col)
 		by = mapy(row + 1, col)
 		be = data[row + 1, col]
 		if be == nodata:
 			continue
-		bz = e2z(be)
+		bz = ZElevation(be)
 
 		cx = mapx(row, col + 1)
 		cy = mapy(row, col + 1)
 		ce = data[row, col + 1]
 		if ce == nodata:
 			continue
-		cz = e2z(ce)
+		cz = ZElevation(ce)
 
 		dx = mapx(row + 1, col + 1)
 		dy = mapy(row + 1, col + 1)
 		de = data[row + 1, col + 1]
-		dz = e2z(de)
+		dz = ZElevation(de)
 
 		t1 = ((ax, ay, az), (bx, by, bz), (cx, cy, cz))
 		t2 = ((dx, dy, dz), (cx, cy, cz), (bx, by, bz))
