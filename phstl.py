@@ -161,12 +161,20 @@ except RuntimeError, e:
 cols = img.RasterXSize
 rows = img.RasterYSize
 
+# get default transformation from image coordinates to world coordinates
 transform = img.GetGeoTransform()
-xyres = transform[1]
+
+# save x pixel size if needed for scaling
+xyres = abs(transform[1])
+
+# initialize z scale to exaggeration factor, if any
 zscale = args.z
 
+# recalculate z scale and xy transform if diferent dimensions are requested
 if args.x != 0.0 or args.y != 0.0:
 	
+	# recaculate xy scale based on requested x or y dimension
+	# if both x and y dimension are set, select smaller scale
 	if args.x != 0.0 and args.y != 0.0:
 		pixel_scale = min(args.x / (cols - 1), args.y / (rows - 1))
 	elif args.x != 0.0:
@@ -174,17 +182,21 @@ if args.x != 0.0 or args.y != 0.0:
 	elif args.y != 0.0:
 		pixel_scale = args.y / (rows - 1)
 	
+	# adjust z scale to maintain proportions with new xy scale
 	zscale *= pixel_scale / xyres
+	
+	# revise transformation matrix
+	# image: 0,0 at top left corner of top left pixel (0.5,0.5 at pixel center)
 	transform = (
-			-pixel_scale * (cols - 1) / 2.0,
-			pixel_scale,
-			0,
-			pixel_scale * (rows - 1) / 2.0,
-			0,
-			-pixel_scale
+			-pixel_scale * (cols - 1) / 2.0, # 0 left edge of top left pixel
+			pixel_scale,                     # 1 pixel width
+			0,                               # 2
+			pixel_scale * (rows - 1) / 2.0,  # 3 top edge of top left pixel
+			0,                               # 4 
+			-pixel_scale                     # 5 pixel height
 	)
 
-print transform
+#print transform
 
 band = img.GetRasterBand(1)
 
@@ -222,11 +234,13 @@ for col in range(cols - 1):
 
 		if args.mode != 'surface':
 			
+			# for box mode, drop walls to constant 0 elevation floor
 			faz = 0
 			fbz = 0
 			fcz = 0
 			fdz = 0
 			
+			# for solid mode, drop walls to base height offset below surface
 			if args.mode == 'solid':
 				faz = az - args.base
 				fbz = bz - args.base
