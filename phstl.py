@@ -188,15 +188,15 @@ if args.x != 0.0 or args.y != 0.0:
 	# revise transformation matrix
 	# image: 0,0 at top left corner of top left pixel (0.5,0.5 at pixel center)
 	transform = (
-			-pixel_scale * (cols - 1) / 2.0, # 0 left edge of top left pixel
-			pixel_scale,                     # 1 pixel width
-			0,                               # 2
-			pixel_scale * (rows - 1) / 2.0,  # 3 top edge of top left pixel
-			0,                               # 4 
-			-pixel_scale                     # 5 pixel height
+			-pixel_scale * (cols) / 2.0, # 0 left edge of top left pixel
+			pixel_scale,               # 1 pixel width
+			0,                         # 2
+			pixel_scale * (rows) / 2.0,  # 3 top edge of top left pixel
+			0,                         # 4 
+			-pixel_scale               # 5 pixel height
 	)
 
-#print transform
+print transform
 
 band = img.GetRasterBand(1)
 
@@ -214,20 +214,20 @@ mesh = stl.Solid(name="Surface")
 for col in range(cols - 1):
 	for row in range(rows - 1):
 
-		ax = XCoordinate(row, col)
-		ay = YCoordinate(row, col)
+		ax = XCoordinate(row + 0.5, col + 0.5)
+		ay = YCoordinate(row + 0.5, col + 0.5)
 		az = ZCoordinate(data[row, col])
 
-		bx = XCoordinate(row + 1, col)
-		by = YCoordinate(row + 1, col)
+		bx = XCoordinate(row + 1.5, col + 0.5)
+		by = YCoordinate(row + 1.5, col + 0.5)
 		bz = ZCoordinate(data[row + 1, col])
 
-		cx = XCoordinate(row, col + 1)
-		cy = YCoordinate(row, col + 1)
+		cx = XCoordinate(row + 0.5, col + 1.5)
+		cy = YCoordinate(row + 0.5, col + 1.5)
 		cz = ZCoordinate(data[row, col + 1])
 
-		dx = XCoordinate(row + 1, col + 1)
-		dy = YCoordinate(row + 1, col + 1)
+		dx = XCoordinate(row + 1.5, col + 1.5)
+		dy = YCoordinate(row + 1.5, col + 1.5)
 		dz = ZCoordinate(data[row + 1, col + 1])
 
 		AddQuad(mesh, (ax, ay, az), (bx, by, bz), (cx, cy, cz), (dx, dy, dz))
