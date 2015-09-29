@@ -20,14 +20,10 @@ ap.add_argument('-x', action='store', default=0.0, type=float, help='Fit output 
 ap.add_argument('-y', action='store', default=0.0, type=float, help='Fit output y to extent (mm)')
 ap.add_argument('-z', action='store', default=1.0, type=float, help='Vertical scale factor')
 ap.add_argument('-b', '--base', action='store', default=0.0, type=float, help='Base height')
-ap.add_argument('-m', '--mode', action='store', default='surface', choices=['surface', 'solid', 'box'], help='Model mode. Base height must be >0 for solid or box.')
 ap.add_argument('-c', '--clip', action='store_true', default=False, help='Clip z to minimum elevation')
 ap.add_argument('RASTER', help='Input heightmap image')
 ap.add_argument('STL', help='Output terrain mesh')
 args = ap.parse_args()
-
-if args.mode != 'surface' and args.base == 0:
-	fail("Nonzero base height required for selected mode.")
 
 #
 # XCoordinate
@@ -231,40 +227,6 @@ for col in range(cols - 1):
 		dz = ZCoordinate(data[row + 1, col + 1])
 
 		AddQuad(mesh, (ax, ay, az), (bx, by, bz), (cx, cy, cz), (dx, dy, dz))
-
-		if args.mode != 'surface':
-			
-			# for box mode, drop walls to constant 0 elevation floor
-			faz = 0
-			fbz = 0
-			fcz = 0
-			fdz = 0
-			
-			# for solid mode, drop walls to base height offset below surface
-			if args.mode == 'solid':
-				faz = az - args.base
-				fbz = bz - args.base
-				fcz = cz - args.base
-				fdz = dz - args.base
-			
-			# left wall
-			if col == 0:
-				AddQuad(mesh, (ax, ay, az), (ax, ay, faz), (bx, by, bz), (bx, by, fbz))
-			
-			# right wall
-			if col == cols - 2:
-				AddQuad(mesh, (dx, dy, dz), (dx, dy, fdz), (cx, cy, cz), (cx, cy, fcz))
-			
-			# top wall
-			if row == 0:
-				AddQuad(mesh, (cx, cy, cz), (cx, cy, fcz), (ax, ay, az), (ax, ay, faz))
-			
-			# bottom wall
-			if row == rows - 2:
-				AddQuad(mesh, (bx, by, bz), (bx, by, fbz), (dx, dy, dz), (dx, dy, fdz))
-			
-			# floor
-			AddQuad(mesh, (ax, ay, faz), (cx, cy, fcz), (bx, by, fbz), (dx, dy, fdz))
 
 stl = open(args.STL, 'w')
 mesh.write_binary(stl)
