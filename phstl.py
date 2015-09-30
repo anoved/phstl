@@ -166,17 +166,17 @@ xyres = abs(transform[1])
 # initialize z scale to exaggeration factor, if any
 zscale = args.z
 
-# recalculate z scale and xy transform if diferent dimensions are requested
+# recalculate z scale and xy transform if different dimensions are requested
 if args.x != 0.0 or args.y != 0.0:
 	
 	# recaculate xy scale based on requested x or y dimension
 	# if both x and y dimension are set, select smaller scale
 	if args.x != 0.0 and args.y != 0.0:
-		pixel_scale = min(args.x / cols, args.y / rows)
+		pixel_scale = min(args.x / (cols - 1), args.y / (rows - 1))
 	elif args.x != 0.0:
-		pixel_scale = args.x / cols
+		pixel_scale = args.x / (cols - 1)
 	elif args.y != 0.0:
-		pixel_scale = args.y / rows
+		pixel_scale = args.y / (rows - 1)
 	
 	# adjust z scale to maintain proportions with new xy scale
 	zscale *= pixel_scale / xyres
@@ -184,12 +184,12 @@ if args.x != 0.0 or args.y != 0.0:
 	# revise transformation matrix
 	# image: 0,0 at top left corner of top left pixel (0.5,0.5 at pixel center)
 	transform = (
-			-pixel_scale * (cols / 2.0), # 0 left edge of top left pixel
-			 pixel_scale,                # 1 pixel width
-			 0,                          # 2
-			 pixel_scale * (rows / 2.0), # 3 top edge of top left pixel
-			 0,                          # 4 
-			-pixel_scale                 # 5 pixel height
+			-pixel_scale * (cols - 1) / 2.0, # 0 left edge of top left pixel
+			 pixel_scale,                    # 1 pixel width
+			 0,                              # 2
+			 pixel_scale * (rows - 1) / 2.0, # 3 top edge of top left pixel
+			 0,                              # 4 
+			-pixel_scale                     # 5 pixel height
 	)
 
 print transform
