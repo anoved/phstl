@@ -1,7 +1,5 @@
 #!/usr/bin/python
 
-# review cols width -1 stuff... I think it stretches it a wee bit much
-
 from math import sqrt
 import sys
 import argparse
