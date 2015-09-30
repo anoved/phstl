@@ -15,12 +15,17 @@ def fail(msg):
 	print >> sys.stderr, msg
 	exit(1)
 
+def log(msg):
+	if args.verbose:
+		print msg
+
 ap = argparse.ArgumentParser(description='Convert a GDAL raster (like a GeoTIFF heightmap) to an STL terrain surface.')
 ap.add_argument('-x', action='store', default=0.0, type=float, help='Fit output x to extent (mm)')
 ap.add_argument('-y', action='store', default=0.0, type=float, help='Fit output y to extent (mm)')
 ap.add_argument('-z', action='store', default=1.0, type=float, help='Vertical scale factor')
 ap.add_argument('-b', '--base', action='store', default=0.0, type=float, help='Base height')
 ap.add_argument('-c', '--clip', action='store_true', default=False, help='Clip z to minimum elevation')
+ap.add_argument('-v', '--verbose', action='store_true', default=False, help='Print log messages')
 ap.add_argument('RASTER', help='Input heightmap image')
 ap.add_argument('STL', help='Output terrain mesh')
 args = ap.parse_args()
@@ -192,12 +197,13 @@ if args.x != 0.0 or args.y != 0.0:
 			-pixel_scale                     # 5 pixel height
 	)
 
-print transform
+log(transform)
 
 band = img.GetRasterBand(1)
 
 # min, max, mean, sd; min used for z clipping
 stats = band.GetStatistics(True, True)
+log(stats)
 if args.clip == True:
 	zmin = stats[0]
 else:
