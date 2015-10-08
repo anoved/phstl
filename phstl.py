@@ -3,6 +3,8 @@
 from math import sqrt
 import sys
 import argparse
+from collections import deque
+from struct import unpack
 
 import gdal
 import stl
@@ -157,8 +159,8 @@ try:
 except RuntimeError, e:
 	fail(str(e).strip())
 
-cols = img.RasterXSize
-rows = img.RasterYSize
+w = img.RasterXSize
+h = img.RasterYSize
 
 # get default transformation from image coordinates to world coordinates
 transform = img.GetGeoTransform()
@@ -175,11 +177,11 @@ if args.x != 0.0 or args.y != 0.0:
 	# recaculate xy scale based on requested x or y dimension
 	# if both x and y dimension are set, select smaller scale
 	if args.x != 0.0 and args.y != 0.0:
-		pixel_scale = min(args.x / (cols - 1), args.y / (rows - 1))
+		pixel_scale = min(args.x / (w - 1), args.y / (h - 1))
 	elif args.x != 0.0:
-		pixel_scale = args.x / (cols - 1)
+		pixel_scale = args.x / (w - 1)
 	elif args.y != 0.0:
-		pixel_scale = args.y / (rows - 1)
+		pixel_scale = args.y / (h - 1)
 	
 	# adjust z scale to maintain proportions with new xy scale
 	zscale *= pixel_scale / xyres
@@ -187,10 +189,10 @@ if args.x != 0.0 or args.y != 0.0:
 	# revise transformation matrix
 	# image: 0,0 at top left corner of top left pixel (0.5,0.5 at pixel center)
 	transform = (
-			-pixel_scale * (cols - 1) / 2.0, # 0 left edge of top left pixel
+			-pixel_scale * (w - 1) / 2.0, # 0 left edge of top left pixel
 			 pixel_scale,                    # 1 pixel width
 			 0,                              # 2
-			 pixel_scale * (rows - 1) / 2.0, # 3 top edge of top left pixel
+			 pixel_scale * (h - 1) / 2.0, # 3 top edge of top left pixel
 			 0,                              # 4 
 			-pixel_scale                     # 5 pixel height
 	)
@@ -207,31 +209,43 @@ if args.clip == True:
 else:
 	zmin = 0
 
-data = band.ReadAsArray()
+log('Initiating raster processing...')
 
 mesh = stl.Solid(name="Surface")
 
-for col in range(cols - 1):
-	for row in range(rows - 1):
+# Space for two rows of image data is allocated. Extending the deque
+# with a third (new) row of data automatically exposes the first (old).
+pixels = deque(maxlen = (2 * w))
 
-		ax = XCoordinate(row, col)
-		ay = YCoordinate(row, col)
-		az = ZCoordinate(data[row, col])
+# not handling the data type flexibly here. should map raster datatype
+# to an appropriate corresponding struct element specificier ('B', 'H', etc)
+pixels.extend(unpack('H' * w, band.ReadRaster(0, 0, w, 1, w, 1, band.DataType)))
 
-		bx = XCoordinate(row + 1, col)
-		by = YCoordinate(row + 1, col)
-		bz = ZCoordinate(data[row + 1, col])
-
-		cx = XCoordinate(row, col + 1)
-		cy = YCoordinate(row, col + 1)
-		cz = ZCoordinate(data[row, col + 1])
-
-		dx = XCoordinate(row + 1, col + 1)
-		dy = YCoordinate(row + 1, col + 1)
-		dz = ZCoordinate(data[row + 1, col + 1])
-
+for y in range(h - 1):
+	
+	pixels.extend(unpack('H' * w, band.ReadRaster(0, y + 1, w, 1, w, 1, band.DataType)))
+	
+	for x in range(w - 1):
+				
+		ax = XCoordinate(y, x)
+		ay = YCoordinate(y, x)
+		az = ZCoordinate(pixels[x])
+		
+		bx = XCoordinate(y + 1, x)
+		by = YCoordinate(y + 1, x)
+		bz = ZCoordinate(pixels[w + x])
+		
+		cx = XCoordinate(y, x + 1)
+		cy = YCoordinate(y, x + 1)
+		cz = ZCoordinate(pixels[0 + x + 1])
+		
+		dx = XCoordinate(y + 1, x + 1)
+		dy = YCoordinate(y + 1, x + 1)
+		dz = ZCoordinate(pixels[w + x + 1])
+		
 		AddQuad(mesh, (ax, ay, az), (bx, by, bz), (cx, cy, cz), (dx, dy, dz))
 
+log('Initiating mesh output...')
 stl = open(args.STL, 'w')
 mesh.write_binary(stl)
 stl.close()
