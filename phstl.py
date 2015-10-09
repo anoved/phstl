@@ -201,6 +201,22 @@ log(transform)
 
 band = img.GetRasterBand(1)
 
+# map GDAL pixel data type to corresponding struct format character
+typemap = {
+	gdal.GDT_Byte:    'B',
+	gdal.GDT_UInt16:  'H',
+	gdal.GDT_Int16:   'h',
+	gdal.GDT_UInt32:  'I',
+	gdal.GDT_Int32:   'i',
+	gdal.GDT_Float32: 'f',
+	gdal.GDT_Float64: 'd'
+}
+
+if band.DataType not in typemap:
+	fail('Unsupported data type: %s' % (gdal.GetDataTypeName(band.DataType)))
+	
+rowformat = typemap.get(band.DataType) * w
+
 # min, max, mean, sd; min used for z clipping
 stats = band.GetStatistics(True, True)
 log(stats)
@@ -208,6 +224,7 @@ if args.clip == True:
 	zmin = stats[0]
 else:
 	zmin = 0
+
 
 log('Initiating raster processing...')
 
@@ -219,11 +236,11 @@ pixels = deque(maxlen = (2 * w))
 
 # not handling the data type flexibly here. should map raster datatype
 # to an appropriate corresponding struct element specificier ('B', 'H', etc)
-pixels.extend(unpack('H' * w, band.ReadRaster(0, 0, w, 1, w, 1, band.DataType)))
+pixels.extend(unpack(rowformat, band.ReadRaster(0, 0, w, 1, w, 1, band.DataType)))
 
 for y in range(h - 1):
 	
-	pixels.extend(unpack('H' * w, band.ReadRaster(0, y + 1, w, 1, w, 1, band.DataType)))
+	pixels.extend(unpack(rowformat, band.ReadRaster(0, y + 1, w, 1, w, 1, band.DataType)))
 	
 	for x in range(w - 1):
 				
