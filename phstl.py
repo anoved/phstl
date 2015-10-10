@@ -116,10 +116,10 @@ mw = w - 1
 mh = h - 1
 
 # get default transformation from image coordinates to world coordinates
-transform = img.GetGeoTransform()
+t = img.GetGeoTransform()
 
 # save x pixel size if needed for scaling
-xyres = abs(transform[1])
+xyres = abs(t[1])
 
 # initialize z scale to exaggeration factor, if any
 zscale = args.z
@@ -141,7 +141,7 @@ if args.x != 0.0 or args.y != 0.0:
 	
 	# revise transformation matrix
 	# image: 0,0 at top left corner of top left pixel (0.5,0.5 at pixel center)
-	transform = (
+	t = (
 			-pixel_scale * mw / 2.0, # 0 left edge of top left pixel
 			 pixel_scale,            # 1 pixel width
 			 0,                      # 2
@@ -150,7 +150,7 @@ if args.x != 0.0 or args.y != 0.0:
 			-pixel_scale             # 5 pixel height
 	)
 
-log(transform)
+log(t)
 
 band = img.GetRasterBand(1)
 
@@ -177,8 +177,6 @@ if args.clip == True:
 	zmin = stats[0]
 else:
 	zmin = 0
-
-t = transform
 
 log('Initiating raster processing...')
 
