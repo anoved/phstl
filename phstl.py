@@ -223,9 +223,9 @@ with stlwriter(mw * mh * 2, args.STL) as mesh:
 			)
 			
 			#
-			# a-c
-			# |/|
-			# b-d
+			# a-c   a-c     c
+			# |/| = |/  +  /|
+			# b-d   b     b-d
 			#
 			mesh.add_facet((a, b, c))
 			mesh.add_facet((d, c, b))
