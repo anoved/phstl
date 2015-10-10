@@ -155,24 +155,6 @@ def NormalVector(t):
 	mag = sqrt((cpx * cpx) + (cpy * cpy) + (cpz * cpz))
 	return (cpx/mag, cpy/mag, cpz/mag)
 
-#
-# AddQuad
-#
-# a-c
-# |/|
-# b-d
-#
-# Parameters:
-#  m: the stl mesh to add the quad to
-#  a, b, c, d: vertices (x y z tuples)
-#
-# Results:
-#  adds two triangle facets to mesh
-#
-def AddQuad(m, a, b, c, d):
-	m.add_facet((a, b, c))
-	m.add_facet((d, c, b))
-
 try:
 	img = gdal.Open(args.RASTER)
 except RuntimeError, e:
@@ -283,4 +265,10 @@ with stlwriter(mw * mh * 2, args.STL) as mesh:
 			dy = YCoordinate(y + 1, x + 1)
 			dz = ZCoordinate(pixels[w + x + 1])
 			
-			AddQuad(mesh, (ax, ay, az), (bx, by, bz), (cx, cy, cz), (dx, dy, dz))
+			#
+			# a-c
+			# |/|
+			# b-d
+			#
+			mesh.add_facet(((ax, ay, az), (bx, by, bz), (cx, cy, cz)))
+			mesh.add_facet(((dx, dy, dz), (cx, cy, cz), (bx, by, bz)))
