@@ -48,6 +48,12 @@ class stlwriter():
 		
 		if self.f != sys.stdout:
 			self.f.close()
+	
+	def __enter__(self):
+		return self
+	
+	def __exit__(self, exc_type, exc_value, traceback):
+		self.done()
 
 def fail(msg):
 	print >> sys.stderr, msg
@@ -263,9 +269,6 @@ if args.clip == True:
 else:
 	zmin = 0
 
-log('Writing STL header...')
-mesh = stlwriter(args.STL, (w - 1) * (h - 1) * 2)
-
 log('Initiating raster processing...')
 
 # Space for two rows of image data is allocated. Extending the deque
@@ -276,28 +279,29 @@ pixels = deque(maxlen = (2 * w))
 # to an appropriate corresponding struct element specificier ('B', 'H', etc)
 pixels.extend(unpack(rowformat, band.ReadRaster(0, 0, w, 1, w, 1, band.DataType)))
 
-for y in range(h - 1):
-	
-	pixels.extend(unpack(rowformat, band.ReadRaster(0, y + 1, w, 1, w, 1, band.DataType)))
-	
-	for x in range(w - 1):
-				
-		ax = XCoordinate(y, x)
-		ay = YCoordinate(y, x)
-		az = ZCoordinate(pixels[x])
-		
-		bx = XCoordinate(y + 1, x)
-		by = YCoordinate(y + 1, x)
-		bz = ZCoordinate(pixels[w + x])
-		
-		cx = XCoordinate(y, x + 1)
-		cy = YCoordinate(y, x + 1)
-		cz = ZCoordinate(pixels[0 + x + 1])
-		
-		dx = XCoordinate(y + 1, x + 1)
-		dy = YCoordinate(y + 1, x + 1)
-		dz = ZCoordinate(pixels[w + x + 1])
-		
-		AddQuad(mesh, (ax, ay, az), (bx, by, bz), (cx, cy, cz), (dx, dy, dz))
+fcount = (w - 1) * (h - 1) * 2
+with stlwriter(args.STL, fcount) as mesh:
 
-mesh.done()
+	for y in range(h - 1):
+		
+		pixels.extend(unpack(rowformat, band.ReadRaster(0, y + 1, w, 1, w, 1, band.DataType)))
+		
+		for x in range(w - 1):
+					
+			ax = XCoordinate(y, x)
+			ay = YCoordinate(y, x)
+			az = ZCoordinate(pixels[x])
+			
+			bx = XCoordinate(y + 1, x)
+			by = YCoordinate(y + 1, x)
+			bz = ZCoordinate(pixels[w + x])
+			
+			cx = XCoordinate(y, x + 1)
+			cy = YCoordinate(y, x + 1)
+			cz = ZCoordinate(pixels[0 + x + 1])
+			
+			dx = XCoordinate(y + 1, x + 1)
+			dy = YCoordinate(y + 1, x + 1)
+			dz = ZCoordinate(pixels[w + x + 1])
+			
+			AddQuad(mesh, (ax, ay, az), (bx, by, bz), (cx, cy, cz), (dx, dy, dz))
