@@ -12,40 +12,32 @@ gdal.UseExceptions()
 
 class stlwriter():
 	
-	def __init__(self, path=None, nfacets=0):
+	# facet_count: predicted number of facets
+	# path: output binary stl file path (default: stdout)
+	def __init__(self, facet_count, path=None):
+		
 		if path == None:
 			self.f = sys.stdout
 		else:
 			self.f = open(path, 'w')
 		
-		self.nfacets = nfacets
-		
-		# internal counter of number of facets actually written
+		# for future use: track number of facets actually written
 		self.written = 0
 		
-		# write header
+		# write binary stl header with predicted facet count
 		self.f.write('\0' * 80)
-		self.f.write(pack('<I', nfacets))
+		self.f.write(pack('<I', facet_count))
 	
+	# n: normal vector to (a, b, c) facet
+	# t: ((ax, ay, az), (bx, by, bz), (cx, cy, cz))
 	def add_facet(self, n, t):
-		
 		self.f.write(pack('<3f', *n))
-		
 		for vertex in t:
 			self.f.write(pack('<3f', *vertex))
-		
-		# attribute byte count; conventionally zero
 		self.f.write('\0\0')
-		# self.f.write(pack('<H', 0))
-		
 		self.written += 1
 	
 	def done(self):
-		
-		if self.nfacets != self.written:
-			# report facet count mismatch (or update header to actual)
-			pass
-		
 		if self.f != sys.stdout:
 			self.f.close()
 	
@@ -71,7 +63,7 @@ ap.add_argument('-b', '--base', action='store', default=0.0, type=float, help='B
 ap.add_argument('-c', '--clip', action='store_true', default=False, help='Clip z to minimum elevation')
 ap.add_argument('-v', '--verbose', action='store_true', default=False, help='Print log messages')
 ap.add_argument('RASTER', help='Input heightmap image')
-ap.add_argument('STL', help='Output terrain mesh')
+ap.add_argument('STL', nargs='?', default=None, help='Output STL path (stdout)')
 args = ap.parse_args()
 
 #
@@ -203,8 +195,13 @@ try:
 except RuntimeError, e:
 	fail(str(e).strip())
 
+# input raster dimensions
 w = img.RasterXSize
 h = img.RasterYSize
+
+# output mesh dimensions are one row and column less than raster
+mw = w - 1
+mh = h - 1
 
 # get default transformation from image coordinates to world coordinates
 transform = img.GetGeoTransform()
@@ -221,11 +218,11 @@ if args.x != 0.0 or args.y != 0.0:
 	# recaculate xy scale based on requested x or y dimension
 	# if both x and y dimension are set, select smaller scale
 	if args.x != 0.0 and args.y != 0.0:
-		pixel_scale = min(args.x / (w - 1), args.y / (h - 1))
+		pixel_scale = min(args.x / mw, args.y / mh)
 	elif args.x != 0.0:
-		pixel_scale = args.x / (w - 1)
+		pixel_scale = args.x / mw
 	elif args.y != 0.0:
-		pixel_scale = args.y / (h - 1)
+		pixel_scale = args.y / mh
 	
 	# adjust z scale to maintain proportions with new xy scale
 	zscale *= pixel_scale / xyres
@@ -233,12 +230,12 @@ if args.x != 0.0 or args.y != 0.0:
 	# revise transformation matrix
 	# image: 0,0 at top left corner of top left pixel (0.5,0.5 at pixel center)
 	transform = (
-			-pixel_scale * (w - 1) / 2.0, # 0 left edge of top left pixel
-			 pixel_scale,                    # 1 pixel width
-			 0,                              # 2
-			 pixel_scale * (h - 1) / 2.0, # 3 top edge of top left pixel
-			 0,                              # 4 
-			-pixel_scale                     # 5 pixel height
+			-pixel_scale * mw / 2.0, # 0 left edge of top left pixel
+			 pixel_scale,            # 1 pixel width
+			 0,                      # 2
+			 pixel_scale * mh / 2.0, # 3 top edge of top left pixel
+			 0,                      # 4 
+			-pixel_scale             # 5 pixel height
 	)
 
 log(transform)
@@ -279,14 +276,13 @@ pixels = deque(maxlen = (2 * w))
 # to an appropriate corresponding struct element specificier ('B', 'H', etc)
 pixels.extend(unpack(rowformat, band.ReadRaster(0, 0, w, 1, w, 1, band.DataType)))
 
-fcount = (w - 1) * (h - 1) * 2
-with stlwriter(args.STL, fcount) as mesh:
+with stlwriter(mw * mh * 2, args.STL) as mesh:
 
-	for y in range(h - 1):
+	for y in range(mh):
 		
 		pixels.extend(unpack(rowformat, band.ReadRaster(0, y + 1, w, 1, w, 1, band.DataType)))
 		
-		for x in range(w - 1):
+		for x in range(mw):
 					
 			ax = XCoordinate(y, x)
 			ay = YCoordinate(y, x)

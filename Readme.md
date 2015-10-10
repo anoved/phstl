@@ -4,13 +4,13 @@ Convert [GDAL](http://www.gdal.org/) rasters to STL mesh. Intended to produce la
 
 ## Usage
 
-    usage: phstl.py [-h] [-x X] [-y Y] [-z Z] [-b BASE] [-c] [-v] RASTER STL
+    usage: phstl.py [-h] [-x X] [-y Y] [-z Z] [-b BASE] [-c] [-v] RASTER [STL]
     
     Convert a GDAL raster (like a GeoTIFF heightmap) to an STL terrain surface.
     
     positional arguments:
       RASTER                Input heightmap image
-      STL                   Output terrain mesh
+      STL                   Output STL path (stdout)
     
     optional arguments:
       -h, --help            show this help message and exit
