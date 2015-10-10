@@ -10,6 +10,43 @@ import gdal
 
 gdal.UseExceptions()
 
+#
+# NormalVector
+#
+# Calculate the normal vector of a triangle. (Unit vector perpendicular to
+# triangle surface, pointing away from the "outer" face of the surface.)
+#
+# Parameters:
+#  triangle vertices (nested x y z tuples)
+#
+# Returns:
+#  normal vector (x y z tuple)
+#
+def NormalVector(t):
+	
+	(ax, ay, az) = t[0]
+	(bx, by, bz) = t[1]
+	(cx, cy, cz) = t[2]
+	
+	# first edge
+	e1x = ax - bx
+	e1y = ay - by
+	e1z = az - bz
+	
+	# second edge
+	e2x = bx - cx
+	e2y = by - cy
+	e2z = bz - cz
+	
+	# cross product
+	cpx = e1y * e2z - e1z * e2y
+	cpy = e1z * e2x - e1x * e2z
+	cpz = e1x * e2y - e1y * e2x
+	
+	# return cross product vector normalized to unit length
+	mag = sqrt((cpx * cpx) + (cpy * cpy) + (cpz * cpz))
+	return (cpx/mag, cpy/mag, cpz/mag)
+
 class stlwriter():
 	
 	# facet_count: predicted number of facets
@@ -64,96 +101,6 @@ ap.add_argument('-v', '--verbose', action='store_true', default=False, help='Pri
 ap.add_argument('RASTER', help='Input heightmap image')
 ap.add_argument('STL', nargs='?', default=None, help='Output STL path (stdout)')
 args = ap.parse_args()
-
-#
-# XCoordinate
-#
-# Apply affine transformation to get output X coordinate from image coordinates.
-#
-# Parameters:
-#  r, c: row, column image coordinates
-#
-# Accesses:
-#  transform tuple
-#
-# Returns:
-#  x value
-#
-def XCoordinate(r, c):
-	return transform[0] + (c * transform[1]) + (r * transform[2])
-
-#
-# YCoordinate
-#
-# Apply affine transformation to get output Y coordinate from image coordinates.
-#
-# Parameters:
-#  r, c: row, column image coordinates
-#
-# Accesses:
-#  transform tuple
-#
-# Returns:
-#  y value
-#
-def YCoordinate(r, c):
-	return transform[3] + (c * transform[4]) + (r * transform[5])
-
-#
-# ZCoordinate
-#
-# Convert an elevation value to output Z units. Applies clipping to minimum
-# elevation (zmin, if nonzero); z scaling (and exaggeration); and base offset.
-#
-# Parameters:
-#  elevation
-#
-# Accesses:
-#  zscale, zmin, and args.base
-#
-# Returns:
-#  z value
-#
-def ZCoordinate(e):
-	return (zscale * (float(e) - zmin)) + args.base
-
-#
-# NormalVector
-#
-# Calculate the normal vector of a triangle. (Unit vector perpendicular to
-# triangle surface, pointing away from the "outer" face of the surface.)
-# Could be bundled into stlwriter class.
-#
-# Parameters:
-#  triangle vertices (nested x y z tuples)
-#
-# Returns:
-#  normal vector (x y z tuple)
-#
-def NormalVector(t):
-	
-	(ax, ay, az) = t[0]
-	(bx, by, bz) = t[1]
-	(cx, cy, cz) = t[2]
-	
-	# first edge
-	e1x = ax - bx
-	e1y = ay - by
-	e1z = az - bz
-	
-	# second edge
-	e2x = bx - cx
-	e2y = by - cy
-	e2z = bz - cz
-	
-	# cross product
-	cpx = e1y * e2z - e1z * e2y
-	cpy = e1z * e2x - e1x * e2z
-	cpz = e1x * e2y - e1y * e2x
-	
-	# return cross product vector normalized to unit length
-	mag = sqrt((cpx * cpx) + (cpy * cpy) + (cpz * cpz))
-	return (cpx/mag, cpy/mag, cpz/mag)
 
 try:
 	img = gdal.Open(args.RASTER)
@@ -231,6 +178,8 @@ if args.clip == True:
 else:
 	zmin = 0
 
+t = transform
+
 log('Initiating raster processing...')
 
 # Space for two rows of image data is allocated. Extending the deque
@@ -248,27 +197,35 @@ with stlwriter(mw * mh * 2, args.STL) as mesh:
 		pixels.extend(unpack(rowformat, band.ReadRaster(0, y + 1, w, 1, w, 1, band.DataType)))
 		
 		for x in range(mw):
-					
-			ax = XCoordinate(y, x)
-			ay = YCoordinate(y, x)
-			az = ZCoordinate(pixels[x])
 			
-			bx = XCoordinate(y + 1, x)
-			by = YCoordinate(y + 1, x)
-			bz = ZCoordinate(pixels[w + x])
+			a = (
+				t[0] + (x * t[1]) + (y * t[2]),
+				t[3] + (x * t[4]) + (y * t[5]),
+				(zscale * (float(pixels[x]) - zmin)) + args.base
+			)
 			
-			cx = XCoordinate(y, x + 1)
-			cy = YCoordinate(y, x + 1)
-			cz = ZCoordinate(pixels[0 + x + 1])
+			b = (
+				t[0] + (x * t[1]) + ((y + 1) * t[2]),
+				t[3] + (x * t[4]) + ((y + 1) * t[5]),
+				(zscale * (float(pixels[w + x]) - zmin)) + args.base
+			)
 			
-			dx = XCoordinate(y + 1, x + 1)
-			dy = YCoordinate(y + 1, x + 1)
-			dz = ZCoordinate(pixels[w + x + 1])
+			c = (
+				t[0] + ((x + 1) * t[1]) + (y * t[2]),
+				t[3] + ((x + 1) * t[4]) + (y * t[5]),
+				(zscale * (float(pixels[x + 1]) - zmin)) + args.base
+			)
+			
+			d = (
+				t[0] + ((x + 1) * t[1]) + ((y + 1) * t[2]),
+				t[3] + ((x + 1) * t[4]) + ((y + 1) * t[5]),
+				(zscale * (float(pixels[w + x + 1]) - zmin)) + args.base
+			)
 			
 			#
 			# a-c
 			# |/|
 			# b-d
 			#
-			mesh.add_facet(((ax, ay, az), (bx, by, bz), (cx, cy, cz)))
-			mesh.add_facet(((dx, dy, dz), (cx, cy, cz), (bx, by, bz)))
+			mesh.add_facet((a, b, c))
+			mesh.add_facet((d, c, b))
