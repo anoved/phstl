@@ -123,6 +123,7 @@ def ZCoordinate(e):
 #
 # Calculate the normal vector of a triangle. (Unit vector perpendicular to
 # triangle surface, pointing away from the "outer" face of the surface.)
+# Could be bundled into stlwriter class.
 #
 # Parameters:
 #  triangle vertices (nested x y z tuples)
@@ -156,23 +157,6 @@ def NormalVector(t):
 	return (cpx/mag, cpy/mag, cpz/mag)
 
 #
-# AddTri
-#
-# a-c
-# |/
-# b
-#
-# Parameters:
-#  m: the stl mesh to add the tri to
-#  t: triangle vertices (a b c as nested x y z tuples)
-#
-# Results:
-#  adds triangle facet to mesh
-#
-def AddTri(m, t):
-	m.add_facet(NormalVector(t), t)
-
-#
 # AddQuad
 #
 # a-c
@@ -187,8 +171,8 @@ def AddTri(m, t):
 #  adds two triangle facets to mesh
 #
 def AddQuad(m, a, b, c, d):
-	AddTri(m, (a, b, c))
-	AddTri(m, (d, c, b))
+	m.add_facet(NormalVector((a, b, c)), (a, b, c))
+	m.add_facet(NormalVector((d, c, b)), (d, c, b))
 
 try:
 	img = gdal.Open(args.RASTER)
