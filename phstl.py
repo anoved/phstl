@@ -4,12 +4,50 @@ from math import sqrt
 import sys
 import argparse
 from collections import deque
-from struct import unpack
+from struct import pack, unpack
 
 import gdal
-import stl
 
 gdal.UseExceptions()
+
+class stlwriter():
+	
+	def __init__(self, path=None, nfacets=0):
+		if path == None:
+			self.f = sys.stdout
+		else:
+			self.f = open(path, 'w')
+		
+		self.nfacets = nfacets
+		
+		# internal counter of number of facets actually written
+		self.written = 0
+		
+		# write header
+		self.f.write('\0' * 80)
+		self.f.write(pack('<I', nfacets))
+	
+	def add_facet(self, n, t):
+		
+		self.f.write(pack('<3f', *n))
+		
+		for vertex in t:
+			self.f.write(pack('<3f', *vertex))
+		
+		# attribute byte count; conventionally zero
+		self.f.write('\0\0')
+		# self.f.write(pack('<H', 0))
+		
+		self.written += 1
+	
+	def done(self):
+		
+		if self.nfacets != self.written:
+			# report facet count mismatch (or update header to actual)
+			pass
+		
+		if self.f != sys.stdout:
+			self.f.close()
 
 def fail(msg):
 	print >> sys.stderr, msg
@@ -225,10 +263,10 @@ if args.clip == True:
 else:
 	zmin = 0
 
+log('Writing STL header...')
+mesh = stlwriter(args.STL, (w - 1) * (h - 1) * 2)
 
 log('Initiating raster processing...')
-
-mesh = stl.Solid(name="Surface")
 
 # Space for two rows of image data is allocated. Extending the deque
 # with a third (new) row of data automatically exposes the first (old).
@@ -262,7 +300,4 @@ for y in range(h - 1):
 		
 		AddQuad(mesh, (ax, ay, az), (bx, by, bz), (cx, cy, cz), (dx, dy, dz))
 
-log('Initiating mesh output...')
-stl = open(args.STL, 'w')
-mesh.write_binary(stl)
-stl.close()
+mesh.done()

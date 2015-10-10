@@ -28,7 +28,6 @@ To make printable solids from the output surface, try using the Extrude and Bise
 ## Prerequisites
 
 - [GDAL/OGR in Python](http://trac.osgeo.org/gdal/wiki/GdalOgrInPython) (`sudo easy_install gdal`)
-- [Python-STL](https://github.com/apparentlymart/python-stl) (`sudo pip install stl`)
 
 ## License
 
