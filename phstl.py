@@ -28,10 +28,9 @@ class stlwriter():
 		self.f.write('\0' * 80)
 		self.f.write(pack('<I', facet_count))
 	
-	# n: normal vector to (a, b, c) facet
 	# t: ((ax, ay, az), (bx, by, bz), (cx, cy, cz))
-	def add_facet(self, n, t):
-		self.f.write(pack('<3f', *n))
+	def add_facet(self, t):
+		self.f.write(pack('<3f', *NormalVector(t)))
 		for vertex in t:
 			self.f.write(pack('<3f', *vertex))
 		self.f.write('\0\0')
@@ -171,8 +170,8 @@ def NormalVector(t):
 #  adds two triangle facets to mesh
 #
 def AddQuad(m, a, b, c, d):
-	m.add_facet(NormalVector((a, b, c)), (a, b, c))
-	m.add_facet(NormalVector((d, c, b)), (d, c, b))
+	m.add_facet((a, b, c))
+	m.add_facet((d, c, b))
 
 try:
 	img = gdal.Open(args.RASTER)
