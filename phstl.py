@@ -53,7 +53,7 @@ def fail(msg):
 
 def log(msg):
 	if args.verbose:
-		print msg
+		print >> sys.stderr, msg
 
 ap = argparse.ArgumentParser(description='Convert a GDAL raster (like a GeoTIFF heightmap) to an STL terrain surface.')
 ap.add_argument('-x', action='store', default=0.0, type=float, help='Fit output x to extent (mm)')
