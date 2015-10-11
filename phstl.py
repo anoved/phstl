@@ -98,6 +98,7 @@ ap.add_argument('-z', action='store', default=1.0, type=float, help='Vertical sc
 ap.add_argument('-b', '--base', action='store', default=0.0, type=float, help='Base height')
 ap.add_argument('-c', '--clip', action='store_true', default=False, help='Clip z to minimum elevation')
 ap.add_argument('-v', '--verbose', action='store_true', default=False, help='Print log messages')
+ap.add_argument('--band', action='store', default=1, type=int, help='Raster data band (1)')
 ap.add_argument('RASTER', help='Input heightmap image')
 ap.add_argument('STL', nargs='?', default=None, help='Output STL path (stdout)')
 args = ap.parse_args()
@@ -153,7 +154,7 @@ if args.x != 0.0 or args.y != 0.0:
 
 log("transform = %s" % str(t))
 
-band = img.GetRasterBand(1)
+band = img.GetRasterBand(args.band)
 
 # map GDAL pixel data type to corresponding struct format character
 typemap = {
