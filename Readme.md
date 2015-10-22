@@ -24,7 +24,7 @@ Convert [GDAL](http://www.gdal.org/) rasters to STL mesh. Intended to produce la
       
 ## Tips
 
-To make printable solids from the output surface, try using the Extrude and Bisect mesh edit tools in Blender.
+The output of `phstl` is a surface mesh. To create a manifold solid suitable for 3D printing, use a separate tool like Blender to solidify the model. See this [brief tutorial](demo/steps.md) for an example.
 
 ## Prerequisites
 
