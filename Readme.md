@@ -20,6 +20,7 @@ Convert [GDAL](http://www.gdal.org/) rasters to STL mesh. Intended to produce la
       -b BASE, --base BASE  Base height
       -c, --clip            Clip z to minimum elevation
       -v, --verbose         Print log messages
+      --band BAND           Raster data band (1)
 
 Default `-z` scale factor is `1`.Default `--base` height is `0`. Elevation `--clip` is disabled by default.
 

@@ -98,6 +98,7 @@ ap.add_argument('-z', action='store', default=1.0, type=float, help='Vertical sc
 ap.add_argument('-b', '--base', action='store', default=0.0, type=float, help='Base height')
 ap.add_argument('-c', '--clip', action='store_true', default=False, help='Clip z to minimum elevation')
 ap.add_argument('-v', '--verbose', action='store_true', default=False, help='Print log messages')
+ap.add_argument('--band', action='store', default=1, type=int, help='Raster data band (1)')
 ap.add_argument('RASTER', help='Input heightmap image')
 ap.add_argument('STL', nargs='?', default=None, help='Output STL path (stdout)')
 args = ap.parse_args()
@@ -110,16 +111,17 @@ except RuntimeError, e:
 # input raster dimensions
 w = img.RasterXSize
 h = img.RasterYSize
+log("raster dimensions = (%s, %s)" % (str(w), str(h)))
 
 # output mesh dimensions are one row and column less than raster
 mw = w - 1
 mh = h - 1
 
 # get default transformation from image coordinates to world coordinates
-transform = img.GetGeoTransform()
+t = img.GetGeoTransform()
 
 # save x pixel size if needed for scaling
-xyres = abs(transform[1])
+xyres = abs(t[1])
 
 # initialize z scale to exaggeration factor, if any
 zscale = args.z
@@ -141,7 +143,7 @@ if args.x != 0.0 or args.y != 0.0:
 	
 	# revise transformation matrix
 	# image: 0,0 at top left corner of top left pixel (0.5,0.5 at pixel center)
-	transform = (
+	t = (
 			-pixel_scale * mw / 2.0, # 0 left edge of top left pixel
 			 pixel_scale,            # 1 pixel width
 			 0,                      # 2
@@ -150,9 +152,9 @@ if args.x != 0.0 or args.y != 0.0:
 			-pixel_scale             # 5 pixel height
 	)
 
-log(transform)
+log("transform = %s" % str(t))
 
-band = img.GetRasterBand(1)
+band = img.GetRasterBand(args.band)
 
 # map GDAL pixel data type to corresponding struct format character
 typemap = {
@@ -165,38 +167,56 @@ typemap = {
 	gdal.GDT_Float64: 'd'
 }
 
+typeName = gdal.GetDataTypeName(band.DataType)
 if band.DataType not in typemap:
-	fail('Unsupported data type: %s' % (gdal.GetDataTypeName(band.DataType)))
-	
+	fail('Unsupported data type: %s' % typeName)
+
+# rowformat is used to unpack a row of raw image data to numeric form
 rowformat = typemap.get(band.DataType) * w
+log("data type = %s" % typeName)
+log("type format = %s" % typemap.get(band.DataType))
 
 # min, max, mean, sd; min used for z clipping
 stats = band.GetStatistics(True, True)
-log(stats)
+log("min, max, mean, sd = %s" % str(stats))
+
+# zmin is subtracted from elevation values
 if args.clip == True:
 	zmin = stats[0]
 else:
 	zmin = 0
+log("zmin = %s" % str(zmin))
 
-t = transform
-
-log('Initiating raster processing...')
-
-# Space for two rows of image data is allocated. Extending the deque
-# with a third (new) row of data automatically exposes the first (old).
+# Rolling pixel buffer has space for two rows of image data.
+# Old data is automatically discarded as new data is loaded.
 pixels = deque(maxlen = (2 * w))
+log("buffer size = %s" % str(pixels.maxlen))
 
-# not handling the data type flexibly here. should map raster datatype
-# to an appropriate corresponding struct element specificier ('B', 'H', etc)
+# Initialize pixel buffer with first row of image data.
 pixels.extend(unpack(rowformat, band.ReadRaster(0, 0, w, 1, w, 1, band.DataType)))
 
-with stlwriter(mw * mh * 2, args.STL) as mesh:
+# precalculate output mesh size (STL is 50 bytes/facet + 84 byte header)
+facetcount = mw * mh * 2
+filesize = (facetcount * 50) + 84
+log("facet count = %s" % str(facetcount))
+log("STL file size = %s bytes" % str(filesize))
+
+with stlwriter(facetcount, args.STL) as mesh:
 
 	for y in range(mh):
 		
+		# Each row, extend pixel buffer with the next row of image data.
 		pixels.extend(unpack(rowformat, band.ReadRaster(0, y + 1, w, 1, w, 1, band.DataType)))
 		
 		for x in range(mw):
+			
+			# Apply transforms to obtain output mesh coordinates of the
+			# four corners composed of raster points a (x, y), b, c,
+			# and d (x + 1, y + 1):
+			#
+			# a-c   a-c     c
+			# |/| = |/  +  /|
+			# b-d   b     b-d
 			
 			a = (
 				t[0] + (x * t[1]) + (y * t[2]),
@@ -222,10 +242,6 @@ with stlwriter(mw * mh * 2, args.STL) as mesh:
 				(zscale * (float(pixels[w + x + 1]) - zmin)) + args.base
 			)
 			
-			#
-			# a-c   a-c     c
-			# |/| = |/  +  /|
-			# b-d   b     b-d
-			#
+			# Write out the two triangular facets comprising this quad.
 			mesh.add_facet((a, b, c))
 			mesh.add_facet((d, c, b))
