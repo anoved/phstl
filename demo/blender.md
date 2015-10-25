@@ -1,4 +1,4 @@
-# Extrude a Surface
+# Extrude a Surface with Blender
 
 How to use Blender's `Extrude` tool to solidify a surface mesh created with `phstl`:
 
