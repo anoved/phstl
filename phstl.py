@@ -49,16 +49,13 @@ def NormalVector(t):
 
 class stlwriter():
 	
+	# path: output binary stl file path
 	# facet_count: predicted number of facets
-	# path: output binary stl file path (default: stdout)
-	def __init__(self, facet_count, path=None):
+	def __init__(self, path, facet_count=0):
 		
-		if path == None:
-			self.f = sys.stdout
-		else:
-			self.f = open(path, 'w')
+		self.f = open(path, 'wb')
 		
-		# for future use: track number of facets actually written
+		# track number of facets actually written
 		self.written = 0
 		
 		# write binary stl header with predicted facet count
@@ -74,9 +71,11 @@ class stlwriter():
 		self.written += 1
 	
 	def done(self):
-		if self.f != sys.stdout:
-			self.f.close()
-	
+		# update final facet count in header before closing file
+		self.f.seek(80)
+		self.f.write(pack('<I', self.written))
+		self.f.close()
+
 	def __enter__(self):
 		return self
 	
@@ -99,8 +98,10 @@ ap.add_argument('-b', '--base', action='store', default=0.0, type=float, help='B
 ap.add_argument('-c', '--clip', action='store_true', default=False, help='Clip z to minimum elevation')
 ap.add_argument('-v', '--verbose', action='store_true', default=False, help='Print log messages')
 ap.add_argument('--band', action='store', default=1, type=int, help='Raster data band (1)')
+ap.add_argument('-m', '--minimum', action='store', default=None, type=float, help='Minimum elevation')
+ap.add_argument('-M', '--maximum', action='store', default=None, type=float, help='Maximum elevation')
 ap.add_argument('RASTER', help='Input heightmap image')
-ap.add_argument('STL', nargs='?', default=None, help='Output STL path (stdout)')
+ap.add_argument('STL',  help='Output STL path')
 args = ap.parse_args()
 
 try:
@@ -155,6 +156,7 @@ if args.x != 0.0 or args.y != 0.0:
 log("transform = %s" % str(t))
 
 band = img.GetRasterBand(args.band)
+nd = band.GetNoDataValue()
 
 # map GDAL pixel data type to corresponding struct format character
 typemap = {
@@ -198,10 +200,21 @@ pixels.extend(unpack(rowformat, band.ReadRaster(0, 0, w, 1, w, 1, band.DataType)
 # precalculate output mesh size (STL is 50 bytes/facet + 84 byte header)
 facetcount = mw * mh * 2
 filesize = (facetcount * 50) + 84
-log("facet count = %s" % str(facetcount))
-log("STL file size = %s bytes" % str(filesize))
+log("predicted (max) facet count = %s" % str(facetcount))
+log("predicted (max) STL file size = %s bytes" % str(filesize))
 
-with stlwriter(facetcount, args.STL) as mesh:
+def skip(v):
+	global nd
+	global args
+	if v == nd:
+		return True
+	if args.minimum != None and v < args.minimum:
+		return True
+	if args.maximum != None and v > args.maximum:
+		return True
+	return False
+
+with stlwriter(args.STL, facetcount) as mesh:
 
 	for y in range(mh):
 		
@@ -209,6 +222,11 @@ with stlwriter(facetcount, args.STL) as mesh:
 		pixels.extend(unpack(rowformat, band.ReadRaster(0, y + 1, w, 1, w, 1, band.DataType)))
 		
 		for x in range(mw):
+			
+			av = pixels[x]
+			bv = pixels[w + x]
+			cv = pixels[x + 1]
+			dv = pixels[w + x + 1]
 			
 			# Apply transforms to obtain output mesh coordinates of the
 			# four corners composed of raster points a (x, y), b, c,
@@ -218,30 +236,37 @@ with stlwriter(facetcount, args.STL) as mesh:
 			# |/| = |/  +  /|
 			# b-d   b     b-d
 			
-			a = (
-				t[0] + (x * t[1]) + (y * t[2]),
-				t[3] + (x * t[4]) + (y * t[5]),
-				(zscale * (float(pixels[x]) - zmin)) + args.base
-			)
+			# Points b and c are required for both facets, so if either
+			# are unavailable, we can skip this pixel altogether.
+			if skip(bv) or skip(cv):
+				continue
 			
 			b = (
 				t[0] + (x * t[1]) + ((y + 1) * t[2]),
 				t[3] + (x * t[4]) + ((y + 1) * t[5]),
-				(zscale * (float(pixels[w + x]) - zmin)) + args.base
+				(zscale * (float(bv) - zmin)) + args.base
 			)
 			
 			c = (
 				t[0] + ((x + 1) * t[1]) + (y * t[2]),
 				t[3] + ((x + 1) * t[4]) + (y * t[5]),
-				(zscale * (float(pixels[x + 1]) - zmin)) + args.base
+				(zscale * (float(cv) - zmin)) + args.base
 			)
 			
-			d = (
-				t[0] + ((x + 1) * t[1]) + ((y + 1) * t[2]),
-				t[3] + ((x + 1) * t[4]) + ((y + 1) * t[5]),
-				(zscale * (float(pixels[w + x + 1]) - zmin)) + args.base
-			)
+			if not skip(av):
+				a = (
+					t[0] + (x * t[1]) + (y * t[2]),
+					t[3] + (x * t[4]) + (y * t[5]),
+					(zscale * (float(av) - zmin)) + args.base
+				)
+				mesh.add_facet((a, b, c))
 			
-			# Write out the two triangular facets comprising this quad.
-			mesh.add_facet((a, b, c))
-			mesh.add_facet((d, c, b))
+			if not skip(dv):
+				d = (
+					t[0] + ((x + 1) * t[1]) + ((y + 1) * t[2]),
+					t[3] + ((x + 1) * t[4]) + ((y + 1) * t[5]),
+					(zscale * (float(dv) - zmin)) + args.base
+				)
+				mesh.add_facet((d, c, b))
+
+log("actual facet count: %s" % str(mesh.written))
