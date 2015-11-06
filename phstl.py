@@ -100,6 +100,8 @@ ap.add_argument('-v', '--verbose', action='store_true', default=False, help='Pri
 ap.add_argument('--band', action='store', default=1, type=int, help='Raster data band (1)')
 ap.add_argument('-m', '--minimum', action='store', default=None, type=float, help='Omit vertices below minimum elevation')
 ap.add_argument('-M', '--maximum', action='store', default=None, type=float, help='Omit vertices above maximum elevation')
+ap.add_argument('-w', '--window', action='store', default=None, type=float, nargs=4, help='Opposing corner coordinates in geographic CRS')
+ap.add_argument('-p', '--pixels', action='store', default=None, type=float, nargs=4, help='Opposing corner coordinates in pixel coordinates')
 ap.add_argument('RASTER', help='Input heightmap image')
 ap.add_argument('STL',  help='Output STL path')
 args = ap.parse_args()
@@ -196,6 +198,90 @@ log("buffer size = %s" % str(pixels.maxlen))
 
 # Initialize pixel buffer with first row of image data.
 pixels.extend(unpack(rowformat, band.ReadRaster(0, 0, w, 1, w, 1, band.DataType)))
+
+# pixel window to process:
+# x, y (offset from raster origin to top left of window)
+# w, h (width and height of window; bottom left of window is x + w, y + h, clipped to raster extent)
+
+# processing a geographic window (corners given in geographic coordiantes):
+# step one is to convert geographic corner coordinates to raster reference frame
+# then use those as the pixel coordinates
+
+# we have the geotransform. to convert a geographic coordinate pair to raster reference frame,
+# ti = gdal.InvGeoTransform(t) [1]
+# xy = gdal.ApplyGeoTransform(ti, geo_x, geo_y)
+
+# before proceeding, reconsider initial decision not to worry about windows
+# and features and just rely on pre-processing the input raster to the desired extent
+
+# preferred argument format may be to take two points (four coordinate values)
+# - convert each to pixel coordinates
+# - determine which pixel point to use as the upper left and which to use as the lower right
+# - clip to 0,0:w,h extent
+#
+
+# do this window setup stuff prior to setting up pixels buffer and reading
+# first portion of raster. allocation and readraster should use the window
+# width in pixels, which may be modified here from the default of raster w.
+
+if args.window != None:
+	# get inverse geo transform
+	it = gdal.InvGeoTransform(t)[1]
+	
+	# apply inverse geo transform to window points
+	px0, py0 = gdal.ApplyGeoTransform(it, args.window[0], args.window[1])
+	px1, py1 = gdal.ApplyGeoTransform(it, args.window[2], args.window[3])
+	
+	# set arg.pixels to obtained pixel points
+	args.pixels = [px0, py0, px1, py1]
+
+if args.pixels == None:
+	xmin = 0
+	ymin = 0
+	ww = w
+	wh = h
+else:
+	# find pair of values in args.pixels
+	xmin = min(args.pixels[0], args.pixels[2])
+	ymin = min(args.pixels[1], args.pixels[3])
+	
+	xmax = max(args.pixels[0], args.pixels[2])
+	ymax = max(args.pixels[1], args.pixels[3])
+	
+	if xmin >= w:
+		fail("Region of interest lies entirely outside raster (xmin)")
+	
+	if ymin >= h:
+		fail("Region of interest lies entirely outside raster (ymin")
+	
+	if xmax <= 0:
+		fail("Region of interest lies entirely outside raster (xmax)")
+	
+	if ymax <= 0:
+		fail("Region of interest lies entirely outside raster (ymax)")
+	
+	# if we passed those tests, at least part of the window overlaps the raster,
+	# so we can safely clip to the raster extent and still have something
+	
+	if xmin < 0:
+		xmin = 0
+	
+	if ymin < 0:
+		ymin = 0
+	
+	if xmax > w:
+		xmax = w
+			
+	if ymax > h:
+		ymax = h
+	
+	ww = xmax - xmin
+	wh = ymax - ymin
+
+log("xmin, ymin = %f, %f" % (xmin, ymin))
+log("ww, wh = %f, %f" % (ww, wh))
+
+# todo: use xmin/ymin and ww/wh in subsequent buffer/readraster/iteration calls
 
 # precalculate output mesh size (STL is 50 bytes/facet + 84 byte header)
 facetcount = mw * mh * 2
