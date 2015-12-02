@@ -6,7 +6,7 @@ import argparse
 from collections import deque
 from struct import pack, unpack
 
-import gdal
+from osgeo import gdal
 
 gdal.UseExceptions()
 gdal.TermProgress = gdal.TermProgress_nocb
