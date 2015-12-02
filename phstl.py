@@ -9,6 +9,7 @@ from struct import pack, unpack
 import gdal
 
 gdal.UseExceptions()
+gdal.TermProgress = gdal.TermProgress_nocb
 
 #
 # NormalVector
@@ -268,5 +269,6 @@ with stlwriter(args.STL, facetcount) as mesh:
 					(zscale * (float(dv) - zmin)) + args.base
 				)
 				mesh.add_facet((d, c, b))
+		gdal.TermProgress(float(y + 1) / mh)
 
 log("actual facet count: %s" % str(mesh.written))
