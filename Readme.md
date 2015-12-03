@@ -21,6 +21,10 @@ Convert [GDAL](http://www.gdal.org/) rasters to STL mesh. Intended to produce la
       -c, --clip            Clip z to minimum elevation
       -v, --verbose         Print log messages
       --band BAND           Raster data band (1)
+      -m MINIMUM, --minimum MINIMUM
+                            Omit vertices below minimum elevation
+      -M MAXIMUM, --maximum MAXIMUM
+                            Omit vertices above maximum elevation
       
 ## Tips
 

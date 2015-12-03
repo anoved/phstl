@@ -6,9 +6,10 @@ import argparse
 from collections import deque
 from struct import pack, unpack
 
-import gdal
+from osgeo import gdal
 
 gdal.UseExceptions()
+gdal.TermProgress = gdal.TermProgress_nocb
 
 #
 # NormalVector
@@ -98,8 +99,8 @@ ap.add_argument('-b', '--base', action='store', default=0.0, type=float, help='B
 ap.add_argument('-c', '--clip', action='store_true', default=False, help='Clip z to minimum elevation')
 ap.add_argument('-v', '--verbose', action='store_true', default=False, help='Print log messages')
 ap.add_argument('--band', action='store', default=1, type=int, help='Raster data band (1)')
-ap.add_argument('-m', '--minimum', action='store', default=None, type=float, help='Minimum elevation')
-ap.add_argument('-M', '--maximum', action='store', default=None, type=float, help='Maximum elevation')
+ap.add_argument('-m', '--minimum', action='store', default=None, type=float, help='Omit vertices below minimum elevation')
+ap.add_argument('-M', '--maximum', action='store', default=None, type=float, help='Omit vertices above maximum elevation')
 ap.add_argument('RASTER', help='Input heightmap image')
 ap.add_argument('STL',  help='Output STL path')
 args = ap.parse_args()
@@ -268,5 +269,6 @@ with stlwriter(args.STL, facetcount) as mesh:
 					(zscale * (float(dv) - zmin)) + args.base
 				)
 				mesh.add_facet((d, c, b))
+		gdal.TermProgress(float(y + 1) / mh)
 
 log("actual facet count: %s" % str(mesh.written))
