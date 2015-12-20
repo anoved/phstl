@@ -122,6 +122,9 @@ mh = h - 1
 # get default transformation from image coordinates to world coordinates
 t = img.GetGeoTransform()
 
+git = gdal.InvGeoTransform(t)[1]
+log("geo->pixel transform: %s" % str(git))
+
 # save x pixel size if needed for scaling
 xyres = abs(t[1])
 
