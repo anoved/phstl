@@ -24,8 +24,6 @@ To scale the output to fit a certain size, use the `-x` or `-y` extent option. T
 
 The output surface mesh is not a manifold object. Use another tool to solidify the model in preparation for 3D printing. For examples, see these brief tutorials for [Blender](demo/blender.md) or [Meshmixer](demo/meshmixer.md).
 
-See the [tips](#tips) below for a few ways to solidify it in preparation for 3D printing.
-
 ## Usage
 
     usage: phstl.py [-h] [-x X] [-y Y] [-z Z] [-b BASE] [-c] [-v] RASTER [STL]
