@@ -22,7 +22,9 @@ To scale the output to fit a certain size, use the `-x` or `-y` extent option. T
 
 ![customized mesh output](demo/examplemesh2.png)
 
-The output surface mesh is not a manifold object. See the [tips](#tips) below for a few ways to solidify it in preparation for 3D printing.
+The output surface mesh is not a manifold object. Use another tool to solidify the model in preparation for 3D printing. For examples, see these brief tutorials for [Blender](demo/blender.md) or [Meshmixer](demo/meshmixer.md).
+
+See the [tips](#tips) below for a few ways to solidify it in preparation for 3D printing.
 
 ## Usage
 
@@ -48,10 +50,6 @@ The output surface mesh is not a manifold object. See the [tips](#tips) below fo
       -M MAXIMUM, --maximum MAXIMUM
                             Omit vertices above maximum elevation
  
-## Tips
-
-The output of `phstl` is a surface mesh. To create a manifold solid suitable for 3D printing, use a separate tool to solidify the model. See these brief tutorials for [Blender](demo/blender.md) or [Meshmixer](demo/meshmixer.md).
-
 ## Prerequisites
 
 - [GDAL/OGR in Python](http://trac.osgeo.org/gdal/wiki/GdalOgrInPython) (`sudo easy_install gdal`)
