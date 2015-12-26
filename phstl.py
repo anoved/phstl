@@ -117,10 +117,6 @@ w = img.RasterXSize
 h = img.RasterYSize
 log("raster dimensions = (%s, %s)" % (str(w), str(h)))
 
-# output mesh dimensions are one row and column less than raster
-mw = w - 1
-mh = h - 1
-
 # get default transformation from image coordinates to world coordinates
 t = img.GetGeoTransform()
 
@@ -132,6 +128,70 @@ xyres = abs(t[1])
 
 # initialize z scale to exaggeration factor, if any
 zscale = args.z
+
+# if a geographic window is specified, convert it to a pixel window in input raster coordinates
+if args.window != None:
+	
+	# apply inverse geo transform to window points
+	px0, py0 = gdal.ApplyGeoTransform(git, args.window[0], args.window[1])
+	px1, py1 = gdal.ApplyGeoTransform(git, args.window[2], args.window[3])
+	
+	# set arg.pixels to obtained pixel points
+	args.pixels = [px0, py0, px1, py1]
+
+# if no extent window is specified, use full input raster.
+if args.pixels == None:
+	xmin = 0
+	ymin = 0
+	ww = w
+	wh = h
+
+# if a pixel extent window is specified (either explicitly or
+# derived from a geographic window), clip it to the input raster extent.
+else:
+	
+	xmin = int(round(min(args.pixels[0], args.pixels[2])))
+	ymin = int(round(min(args.pixels[1], args.pixels[3])))
+	
+	xmax = int(round(max(args.pixels[0], args.pixels[2])))
+	ymax = int(round(max(args.pixels[1], args.pixels[3])))
+	
+	if xmin >= w:
+		fail("Region of interest lies entirely outside raster (xmin)")
+	
+	if ymin >= h:
+		fail("Region of interest lies entirely outside raster (ymin")
+	
+	if xmax <= 0:
+		fail("Region of interest lies entirely outside raster (xmax)")
+	
+	if ymax <= 0:
+		fail("Region of interest lies entirely outside raster (ymax)")
+	
+	# if we passed those tests, at least part of the window overlaps the raster,
+	# so we can safely clip to the raster extent and still have something
+	
+	if xmin < 0:
+		xmin = 0
+	
+	if ymin < 0:
+		ymin = 0
+	
+	if xmax > w:
+		xmax = w
+			
+	if ymax > h:
+		ymax = h
+	
+	ww = xmax - xmin
+	wh = ymax - ymin
+
+log("xmin, ymin = %d, %d" % (xmin, ymin))
+log("ww, wh = %d, %d" % (ww, wh))
+
+# output mesh dimensions are one row and column less than raster window
+mw = ww - 1
+mh = wh - 1
 
 # recalculate z scale and xy transform if different dimensions are requested
 if args.x != 0.0 or args.y != 0.0:
@@ -180,7 +240,7 @@ if band.DataType not in typemap:
 	fail('Unsupported data type: %s' % typeName)
 
 # rowformat is used to unpack a row of raw image data to numeric form
-rowformat = typemap.get(band.DataType) * w
+rowformat = typemap.get(band.DataType) * ww
 log("data type = %s" % typeName)
 log("type format = %s" % typemap.get(band.DataType))
 
@@ -197,95 +257,11 @@ log("zmin = %s" % str(zmin))
 
 # Rolling pixel buffer has space for two rows of image data.
 # Old data is automatically discarded as new data is loaded.
-pixels = deque(maxlen = (2 * w))
+pixels = deque(maxlen = (2 * ww))
 log("buffer size = %s" % str(pixels.maxlen))
 
 # Initialize pixel buffer with first row of image data.
-pixels.extend(unpack(rowformat, band.ReadRaster(0, 0, w, 1, w, 1, band.DataType)))
-
-# pixel window to process:
-# x, y (offset from raster origin to top left of window)
-# w, h (width and height of window; bottom left of window is x + w, y + h, clipped to raster extent)
-
-# processing a geographic window (corners given in geographic coordiantes):
-# step one is to convert geographic corner coordinates to raster reference frame
-# then use those as the pixel coordinates
-
-# we have the geotransform. to convert a geographic coordinate pair to raster reference frame,
-# ti = gdal.InvGeoTransform(t) [1]
-# xy = gdal.ApplyGeoTransform(ti, geo_x, geo_y)
-
-# before proceeding, reconsider initial decision not to worry about windows
-# and features and just rely on pre-processing the input raster to the desired extent
-
-# preferred argument format may be to take two points (four coordinate values)
-# - convert each to pixel coordinates
-# - determine which pixel point to use as the upper left and which to use as the lower right
-# - clip to 0,0:w,h extent
-#
-
-# do this window setup stuff prior to setting up pixels buffer and reading
-# first portion of raster. allocation and readraster should use the window
-# width in pixels, which may be modified here from the default of raster w.
-
-if args.window != None:
-	# get inverse geo transform
-	it = gdal.InvGeoTransform(t)[1]
-	
-	# apply inverse geo transform to window points
-	px0, py0 = gdal.ApplyGeoTransform(it, args.window[0], args.window[1])
-	px1, py1 = gdal.ApplyGeoTransform(it, args.window[2], args.window[3])
-	
-	# set arg.pixels to obtained pixel points
-	args.pixels = [px0, py0, px1, py1]
-
-if args.pixels == None:
-	xmin = 0
-	ymin = 0
-	ww = w
-	wh = h
-else:
-	# find pair of values in args.pixels
-	xmin = min(args.pixels[0], args.pixels[2])
-	ymin = min(args.pixels[1], args.pixels[3])
-	
-	xmax = max(args.pixels[0], args.pixels[2])
-	ymax = max(args.pixels[1], args.pixels[3])
-	
-	if xmin >= w:
-		fail("Region of interest lies entirely outside raster (xmin)")
-	
-	if ymin >= h:
-		fail("Region of interest lies entirely outside raster (ymin")
-	
-	if xmax <= 0:
-		fail("Region of interest lies entirely outside raster (xmax)")
-	
-	if ymax <= 0:
-		fail("Region of interest lies entirely outside raster (ymax)")
-	
-	# if we passed those tests, at least part of the window overlaps the raster,
-	# so we can safely clip to the raster extent and still have something
-	
-	if xmin < 0:
-		xmin = 0
-	
-	if ymin < 0:
-		ymin = 0
-	
-	if xmax > w:
-		xmax = w
-			
-	if ymax > h:
-		ymax = h
-	
-	ww = xmax - xmin
-	wh = ymax - ymin
-
-log("xmin, ymin = %f, %f" % (xmin, ymin))
-log("ww, wh = %f, %f" % (ww, wh))
-
-# todo: use xmin/ymin and ww/wh in subsequent buffer/readraster/iteration calls
+pixels.extend(unpack(rowformat, band.ReadRaster(xmin, ymin, ww, 1, ww, 1, band.DataType)))
 
 # precalculate output mesh size (STL is 50 bytes/facet + 84 byte header)
 facetcount = mw * mh * 2
@@ -309,14 +285,14 @@ with stlwriter(args.STL, facetcount) as mesh:
 	for y in range(mh):
 		
 		# Each row, extend pixel buffer with the next row of image data.
-		pixels.extend(unpack(rowformat, band.ReadRaster(0, y + 1, w, 1, w, 1, band.DataType)))
+		pixels.extend(unpack(rowformat, band.ReadRaster(xmin, ymin + y + 1, ww, 1, ww, 1, band.DataType)))
 		
 		for x in range(mw):
 			
 			av = pixels[x]
-			bv = pixels[w + x]
+			bv = pixels[ww + x]
 			cv = pixels[x + 1]
-			dv = pixels[w + x + 1]
+			dv = pixels[ww + x + 1]
 			
 			# Apply transforms to obtain output mesh coordinates of the
 			# four corners composed of raster points a (x, y), b, c,
@@ -332,29 +308,29 @@ with stlwriter(args.STL, facetcount) as mesh:
 				continue
 			
 			b = (
-				t[0] + (x * t[1]) + ((y + 1) * t[2]),
-				t[3] + (x * t[4]) + ((y + 1) * t[5]),
+				t[0] + ((xmin + x) * t[1]) + ((ymin + y + 1) * t[2]),
+				t[3] + ((xmin + x) * t[4]) + ((ymin + y + 1) * t[5]),
 				(zscale * (float(bv) - zmin)) + args.base
 			)
 			
 			c = (
-				t[0] + ((x + 1) * t[1]) + (y * t[2]),
-				t[3] + ((x + 1) * t[4]) + (y * t[5]),
+				t[0] + ((xmin + x + 1) * t[1]) + ((ymin + y) * t[2]),
+				t[3] + ((xmin + x + 1) * t[4]) + ((ymin + y) * t[5]),
 				(zscale * (float(cv) - zmin)) + args.base
 			)
 			
 			if not skip(av):
 				a = (
-					t[0] + (x * t[1]) + (y * t[2]),
-					t[3] + (x * t[4]) + (y * t[5]),
+					t[0] + ((xmin + x) * t[1]) + ((ymin + y) * t[2]),
+					t[3] + ((xmin + x) * t[4]) + ((ymin + y) * t[5]),
 					(zscale * (float(av) - zmin)) + args.base
 				)
 				mesh.add_facet((a, b, c))
 			
 			if not skip(dv):
 				d = (
-					t[0] + ((x + 1) * t[1]) + ((y + 1) * t[2]),
-					t[3] + ((x + 1) * t[4]) + ((y + 1) * t[5]),
+					t[0] + ((xmin + x + 1) * t[1]) + ((ymin + y + 1) * t[2]),
+					t[3] + ((xmin + x + 1) * t[4]) + ((ymin + y + 1) * t[5]),
 					(zscale * (float(dv) - zmin)) + args.base
 				)
 				mesh.add_facet((d, c, b))
