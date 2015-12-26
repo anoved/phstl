@@ -6,9 +6,10 @@ import argparse
 from collections import deque
 from struct import pack, unpack
 
-import gdal
+from osgeo import gdal
 
 gdal.UseExceptions()
+gdal.TermProgress = gdal.TermProgress_nocb
 
 #
 # NormalVector
@@ -122,6 +123,9 @@ mh = h - 1
 
 # get default transformation from image coordinates to world coordinates
 t = img.GetGeoTransform()
+
+git = gdal.InvGeoTransform(t)[1]
+log("geo->pixel transform: %s" % str(git))
 
 # save x pixel size if needed for scaling
 xyres = abs(t[1])
@@ -354,5 +358,6 @@ with stlwriter(args.STL, facetcount) as mesh:
 					(zscale * (float(dv) - zmin)) + args.base
 				)
 				mesh.add_facet((d, c, b))
+		gdal.TermProgress(float(y + 1) / mh)
 
 log("actual facet count: %s" % str(mesh.written))
