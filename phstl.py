@@ -48,6 +48,10 @@ def NormalVector(t):
 	mag = sqrt((cpx * cpx) + (cpy * cpy) + (cpz * cpz))
 	return (cpx/mag, cpy/mag, cpz/mag)
 
+# stlwriter is a simple class for writing binary STL meshes.
+# Class instances are constructed with a predicted face count.
+# The output file header is overwritten upon completion with
+# the actual face count.
 class stlwriter():
 	
 	# path: output binary stl file path
@@ -65,6 +69,8 @@ class stlwriter():
 	
 	# t: ((ax, ay, az), (bx, by, bz), (cx, cy, cz))
 	def add_facet(self, t):
+		# strictly speaking, we don't need to compute NormalVector,
+		# as other tools could be used to update the output mesh.
 		self.f.write(pack('<3f', *NormalVector(t)))
 		for vertex in t:
 			self.f.write(pack('<3f', *vertex))
@@ -76,7 +82,7 @@ class stlwriter():
 		self.f.seek(80)
 		self.f.write(pack('<I', self.written))
 		self.f.close()
-
+	
 	def __enter__(self):
 		return self
 	
@@ -122,12 +128,6 @@ t = img.GetGeoTransform()
 
 git = gdal.InvGeoTransform(t)[1]
 log("geo->pixel transform: %s" % str(git))
-
-# save x pixel size if needed for scaling
-xyres = abs(t[1])
-
-# initialize z scale to exaggeration factor, if any
-zscale = args.z
 
 # if a geographic window is specified, convert it to a pixel window in input raster coordinates
 if args.window != None:
@@ -192,6 +192,12 @@ log("ww, wh = %d, %d" % (ww, wh))
 # output mesh dimensions are one row and column less than raster window
 mw = ww - 1
 mh = wh - 1
+
+# save x pixel size if needed for scaling
+xyres = abs(t[1])
+
+# initialize z scale to exaggeration factor, if any
+zscale = args.z
 
 # recalculate z scale and xy transform if different dimensions are requested
 if args.x != 0.0 or args.y != 0.0:
@@ -260,15 +266,20 @@ log("zmin = %s" % str(zmin))
 pixels = deque(maxlen = (2 * ww))
 log("buffer size = %s" % str(pixels.maxlen))
 
-# Initialize pixel buffer with first row of image data.
+# Initialize pixel buffer with first row of data from the image window.
 pixels.extend(unpack(rowformat, band.ReadRaster(xmin, ymin, ww, 1, ww, 1, band.DataType)))
 
-# precalculate output mesh size (STL is 50 bytes/facet + 84 byte header)
+# Precalculate output mesh size (STL is 50 bytes/facet + 84 byte header)
+# Actual facet count and file size may differ (be less) if pixels are skipped as nodata or out of range.
 facetcount = mw * mh * 2
 filesize = (facetcount * 50) + 84
 log("predicted (max) facet count = %s" % str(facetcount))
 log("predicted (max) STL file size = %s bytes" % str(filesize))
 
+# skip(v) tests if elevation value v should be omitted from output.
+# It returns True if v matches the nodata value, if v is less than
+# the minimum allowed elevation, or if v is greater than the
+# maximum allowed elevation. Otherwise it returns False.
 def skip(v):
 	global nd
 	global args
@@ -284,11 +295,12 @@ with stlwriter(args.STL, facetcount) as mesh:
 
 	for y in range(mh):
 		
-		# Each row, extend pixel buffer with the next row of image data.
+		# Each row, extend pixel buffer with the next row of data from the image window.
 		pixels.extend(unpack(rowformat, band.ReadRaster(xmin, ymin + y + 1, ww, 1, ww, 1, band.DataType)))
 		
 		for x in range(mw):
 			
+			# Elevation values of this pixel (a) and its neighbors (b, c, and d).
 			av = pixels[x]
 			bv = pixels[ww + x]
 			cv = pixels[x + 1]
@@ -334,6 +346,8 @@ with stlwriter(args.STL, facetcount) as mesh:
 					(zscale * (float(dv) - zmin)) + args.base
 				)
 				mesh.add_facet((d, c, b))
+		
+		# Update progress each row
 		gdal.TermProgress(float(y + 1) / mh)
 
 log("actual facet count: %s" % str(mesh.written))
