@@ -100,7 +100,9 @@ def log(msg):
 ap = argparse.ArgumentParser(description='Convert a GDAL raster (like a GeoTIFF heightmap) to an STL terrain surface.')
 ap.add_argument('-x', action='store', default=0.0, type=float, help='Fit output x to extent (mm)')
 ap.add_argument('-y', action='store', default=0.0, type=float, help='Fit output y to extent (mm)')
-ap.add_argument('-z', action='store', default=1.0, type=float, help='Vertical scale factor (1)')
+zargs = ap.add_mutually_exclusive_group()
+zargs.add_argument('-z', action='store', default=None, type=float, help='Z scale expressed as a vertical scale factor (1)')
+zargs.add_argument('-s', action='store', default=None, type=float, help='Z scale expressed as a ratio of vertical units per horizontal unit (1)')
 ap.add_argument('-b', '--base', action='store', default=0.0, type=float, help='Base height (0)')
 ap.add_argument('-c', '--clip', action='store_true', default=False, help='Clip z to minimum elevation')
 ap.add_argument('-v', '--verbose', action='store_true', default=False, help='Print log messages')
@@ -196,8 +198,13 @@ mh = wh - 1
 # save x pixel size if needed for scaling
 xyres = abs(t[1])
 
-# initialize z scale to exaggeration factor, if any
-zscale = args.z
+# Apply z scale factor, if any
+if args.z != None:
+	zscale = args.z
+elif args.s != None:
+	zscale = 1.0 / args.s
+else:
+	zscale = 1.0
 
 # recalculate z scale and xy transform if different dimensions are requested
 if args.x != 0.0 or args.y != 0.0:
