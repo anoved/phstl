@@ -132,8 +132,8 @@ t = img.GetGeoTransform()
 git = gdal.InvGeoTransform(t)[1]
 log("geo->pixel transform: %s" % str(git))
 
-# if a geographic window is specified, convert it to a pixel window in input raster coordinates
 if args.window != None:
+	# if a geographic window is specified, convert it to a pixel window in input raster coordinates
 	
 	# apply inverse geo transform to window points
 	px0, py0 = gdal.ApplyGeoTransform(git, args.window[0], args.window[1])
@@ -142,16 +142,15 @@ if args.window != None:
 	# set arg.pixels to obtained pixel points
 	args.pixels = [px0, py0, px1, py1]
 
-# if no extent window is specified, use full input raster.
 if args.pixels == None:
+	# if no pixel extent window is specified, use whole input raster.
 	xmin = 0
 	ymin = 0
 	ww = w
 	wh = h
-
-# if a pixel extent window is specified (either explicitly or
-# derived from a geographic window), clip it to the input raster extent.
 else:
+	# if a pixel extent window is specified (either directly with --pixels or
+	# derived from a geographic --window), clip it to the input raster extent.
 	
 	xmin = int(round(min(args.pixels[0], args.pixels[2])))
 	ymin = int(round(min(args.pixels[1], args.pixels[3])))
