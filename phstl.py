@@ -65,15 +65,18 @@ class stlwriter():
 		
 		# write binary stl header with predicted facet count
 		self.f.write('\0' * 80)
+		# (facet count is little endian 4 byte unsigned int)
 		self.f.write(pack('<I', facet_count))
 	
 	# t: ((ax, ay, az), (bx, by, bz), (cx, cy, cz))
 	def add_facet(self, t):
+		# facet normals and vectors are little endian 4 byte float triplets
 		# strictly speaking, we don't need to compute NormalVector,
 		# as other tools could be used to update the output mesh.
 		self.f.write(pack('<3f', *NormalVector(t)))
 		for vertex in t:
 			self.f.write(pack('<3f', *vertex))
+		# facet records conclude with two null bytes (unused "attributes")
 		self.f.write('\0\0')
 		self.written += 1
 	
@@ -127,6 +130,9 @@ h = img.RasterYSize
 log("raster dimensions = (%s, %s)" % (str(w), str(h)))
 
 # get default transformation from image coordinates to world coordinates
+# note that since we obtain this transformation before making any region
+# selection, and since this transformation is used for output, subset
+# window regions will be aligned correctly in output stl coordinates.
 t = img.GetGeoTransform()
 
 git = gdal.InvGeoTransform(t)[1]
