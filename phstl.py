@@ -5,6 +5,7 @@ import sys
 import argparse
 from collections import deque
 from struct import pack, unpack
+import numpy as np
 
 from osgeo import gdal
 
@@ -48,6 +49,30 @@ def NormalVector(t):
 	mag = sqrt((cpx * cpx) + (cpy * cpy) + (cpz * cpz))
 	return (cpx/mag, cpy/mag, cpz/mag)
 
+def NormalVector32(t):
+	(ax, ay, az) = t[0]
+	(bx, by, bz) = t[1]
+	(cx, cy, cz) = t[2]
+	
+	# first edge
+	e1x = np.float32(ax) - np.float32(bx)
+	e1y = np.float32(ay) - np.float32(by)
+	e1z = np.float32(az) - np.float32(bz)
+	
+	# second edge
+	e2x = np.float32(bx) - np.float32(cx)
+	e2y = np.float32(by) - np.float32(cy)
+	e2z = np.float32(bz) - np.float32(cz)
+	
+	# cross product
+	cpx = np.float32(e1y * e2z) - np.float32(e1z * e2y)
+	cpy = np.float32(e1z * e2x) - np.float32(e1x * e2z)
+	cpz = np.float32(e1x * e2y) - np.float32(e1y * e2x)
+	
+	# return cross product vector normalized to unit length
+	mag = np.sqrt(np.power(cpx, 2) + np.power(cpy, 2) + np.power(cpz, 2))
+	return (cpx/mag, cpy/mag, cpz/mag)
+
 # stlwriter is a simple class for writing binary STL meshes.
 # Class instances are constructed with a predicted face count.
 # The output file header is overwritten upon completion with
@@ -73,7 +98,7 @@ class stlwriter():
 		# facet normals and vectors are little endian 4 byte float triplets
 		# strictly speaking, we don't need to compute NormalVector,
 		# as other tools could be used to update the output mesh.
-		self.f.write(pack('<3f', *NormalVector(t)))
+		self.f.write(pack('<3f', *NormalVector32(t)))
 		for vertex in t:
 			self.f.write(pack('<3f', *vertex))
 		# facet records conclude with two null bytes (unused "attributes")
