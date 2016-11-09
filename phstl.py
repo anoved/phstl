@@ -17,6 +17,7 @@ gdal.TermProgress = gdal.TermProgress_nocb
 #
 # Calculate the normal vector of a triangle. (Unit vector perpendicular to
 # triangle surface, pointing away from the "outer" face of the surface.)
+# Computed using 32-bit float operations for consistency with other tools.
 #
 # Parameters:
 #  triangle vertices (nested x y z tuples)
@@ -25,31 +26,6 @@ gdal.TermProgress = gdal.TermProgress_nocb
 #  normal vector (x y z tuple)
 #
 def NormalVector(t):
-	
-	(ax, ay, az) = t[0]
-	(bx, by, bz) = t[1]
-	(cx, cy, cz) = t[2]
-	
-	# first edge
-	e1x = ax - bx
-	e1y = ay - by
-	e1z = az - bz
-	
-	# second edge
-	e2x = bx - cx
-	e2y = by - cy
-	e2z = bz - cz
-	
-	# cross product
-	cpx = e1y * e2z - e1z * e2y
-	cpy = e1z * e2x - e1x * e2z
-	cpz = e1x * e2y - e1y * e2x
-	
-	# return cross product vector normalized to unit length
-	mag = sqrt((cpx * cpx) + (cpy * cpy) + (cpz * cpz))
-	return (cpx/mag, cpy/mag, cpz/mag)
-
-def NormalVector32(t):
 	(ax, ay, az) = t[0]
 	(bx, by, bz) = t[1]
 	(cx, cy, cz) = t[2]
@@ -98,7 +74,7 @@ class stlwriter():
 		# facet normals and vectors are little endian 4 byte float triplets
 		# strictly speaking, we don't need to compute NormalVector,
 		# as other tools could be used to update the output mesh.
-		self.f.write(pack('<3f', *NormalVector32(t)))
+		self.f.write(pack('<3f', *NormalVector(t)))
 		for vertex in t:
 			self.f.write(pack('<3f', *vertex))
 		# facet records conclude with two null bytes (unused "attributes")
