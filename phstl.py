@@ -29,22 +29,22 @@ def NormalVector(t):
 	(ax, ay, az) = t[0]
 	(bx, by, bz) = t[1]
 	(cx, cy, cz) = t[2]
-	
+
 	# first edge
 	e1x = np.float32(ax) - np.float32(bx)
 	e1y = np.float32(ay) - np.float32(by)
 	e1z = np.float32(az) - np.float32(bz)
-	
+
 	# second edge
 	e2x = np.float32(bx) - np.float32(cx)
 	e2y = np.float32(by) - np.float32(cy)
 	e2z = np.float32(bz) - np.float32(cz)
-	
+
 	# cross product
 	cpx = np.float32(e1y * e2z) - np.float32(e1z * e2y)
 	cpy = np.float32(e1z * e2x) - np.float32(e1x * e2z)
 	cpz = np.float32(e1x * e2y) - np.float32(e1y * e2x)
-	
+
 	# return cross product vector normalized to unit length
 	mag = np.sqrt(np.power(cpx, 2) + np.power(cpy, 2) + np.power(cpz, 2))
 	return (cpx/mag, cpy/mag, cpz/mag)
@@ -54,21 +54,21 @@ def NormalVector(t):
 # The output file header is overwritten upon completion with
 # the actual face count.
 class stlwriter():
-	
+
 	# path: output binary stl file path
 	# facet_count: predicted number of facets
 	def __init__(self, path, facet_count=0):
-		
+
 		self.f = open(path, 'wb')
-		
+
 		# track number of facets actually written
 		self.written = 0
-		
+
 		# write binary stl header with predicted facet count
-		self.f.write('\0' * 80)
+		self.f.write(b'\0' * 80)
 		# (facet count is little endian 4 byte unsigned int)
 		self.f.write(pack('<I', facet_count))
-	
+
 	# t: ((ax, ay, az), (bx, by, bz), (cx, cy, cz))
 	def add_facet(self, t):
 		# facet normals and vectors are little endian 4 byte float triplets
@@ -78,18 +78,18 @@ class stlwriter():
 		for vertex in t:
 			self.f.write(pack('<3f', *vertex))
 		# facet records conclude with two null bytes (unused "attributes")
-		self.f.write('\0\0')
+		self.f.write(b'\0\0')
 		self.written += 1
-	
+
 	def done(self):
 		# update final facet count in header before closing file
 		self.f.seek(80)
 		self.f.write(pack('<I', self.written))
 		self.f.close()
-	
+
 	def __enter__(self):
 		return self
-	
+
 	def __exit__(self, exc_type, exc_value, traceback):
 		self.done()
 
@@ -122,7 +122,7 @@ args = ap.parse_args()
 
 try:
 	img = gdal.Open(args.RASTER)
-except RuntimeError, e:
+except RuntimeError as e:
 	fail(str(e).strip())
 
 # input raster dimensions
@@ -141,11 +141,11 @@ log("geo->pixel transform: %s" % str(git))
 
 if args.window != None:
 	# if a geographic window is specified, convert it to a pixel window in input raster coordinates
-	
+
 	# apply inverse geo transform to window points
 	px0, py0 = gdal.ApplyGeoTransform(git, args.window[0], args.window[1])
 	px1, py1 = gdal.ApplyGeoTransform(git, args.window[2], args.window[3])
-	
+
 	# set arg.pixels to obtained pixel points
 	args.pixels = [px0, py0, px1, py1]
 
@@ -158,40 +158,40 @@ if args.pixels == None:
 else:
 	# if a pixel extent window is specified (either directly with --pixels or
 	# derived from a geographic --window), clip it to the input raster extent.
-	
+
 	xmin = int(round(min(args.pixels[0], args.pixels[2])))
 	ymin = int(round(min(args.pixels[1], args.pixels[3])))
-	
+
 	xmax = int(round(max(args.pixels[0], args.pixels[2])))
 	ymax = int(round(max(args.pixels[1], args.pixels[3])))
-	
+
 	if xmin >= w:
 		fail("Region of interest lies entirely outside raster (xmin)")
-	
+
 	if ymin >= h:
 		fail("Region of interest lies entirely outside raster (ymin")
-	
+
 	if xmax <= 0:
 		fail("Region of interest lies entirely outside raster (xmax)")
-	
+
 	if ymax <= 0:
 		fail("Region of interest lies entirely outside raster (ymax)")
-	
+
 	# if we passed those tests, at least part of the window overlaps the raster,
 	# so we can safely clip to the raster extent and still have something
-	
+
 	if xmin < 0:
 		xmin = 0
-	
+
 	if ymin < 0:
 		ymin = 0
-	
+
 	if xmax > w:
 		xmax = w
-			
+
 	if ymax > h:
 		ymax = h
-	
+
 	ww = xmax - xmin
 	wh = ymax - ymin
 
@@ -215,7 +215,7 @@ else:
 
 # recalculate z scale and xy transform if different dimensions are requested
 if args.x != 0.0 or args.y != 0.0:
-	
+
 	# recaculate xy scale based on requested x or y dimension
 	# if both x and y dimension are set, select smaller scale
 	if args.x != 0.0 and args.y != 0.0:
@@ -224,10 +224,10 @@ if args.x != 0.0 or args.y != 0.0:
 		pixel_scale = args.x / mw
 	elif args.y != 0.0:
 		pixel_scale = args.y / mh
-	
+
 	# adjust z scale to maintain proportions with new xy scale
 	zscale *= pixel_scale / xyres
-	
+
 	# revise transformation matrix
 	# image: 0,0 at top left corner of top left pixel (0.5,0.5 at pixel center)
 	t = (
@@ -235,7 +235,7 @@ if args.x != 0.0 or args.y != 0.0:
 			 pixel_scale,            # 1 pixel width
 			 0,                      # 2
 			 pixel_scale * mh / 2.0, # 3 top edge of top left pixel
-			 0,                      # 4 
+			 0,                      # 4
 			-pixel_scale             # 5 pixel height
 	)
 
@@ -308,18 +308,18 @@ def skip(v):
 with stlwriter(args.STL, facetcount) as mesh:
 
 	for y in range(mh):
-		
+
 		# Each row, extend pixel buffer with the next row of data from the image window.
 		pixels.extend(unpack(rowformat, band.ReadRaster(xmin, ymin + y + 1, ww, 1, ww, 1, band.DataType)))
-		
+
 		for x in range(mw):
-			
+
 			# Elevation values of this pixel (a) and its neighbors (b, c, and d).
 			av = pixels[x]
 			bv = pixels[ww + x]
 			cv = pixels[x + 1]
 			dv = pixels[ww + x + 1]
-			
+
 			# Apply transforms to obtain output mesh coordinates of the
 			# four corners composed of raster points a (x, y), b, c,
 			# and d (x + 1, y + 1):
@@ -327,24 +327,24 @@ with stlwriter(args.STL, facetcount) as mesh:
 			# a-c   a-c     c
 			# |/| = |/  +  /|
 			# b-d   b     b-d
-			
+
 			# Points b and c are required for both facets, so if either
 			# are unavailable, we can skip this pixel altogether.
 			if skip(bv) or skip(cv):
 				continue
-			
+
 			b = (
 				t[0] + ((xmin + x) * t[1]) + ((ymin + y + 1) * t[2]),
 				t[3] + ((xmin + x) * t[4]) + ((ymin + y + 1) * t[5]),
 				(zscale * (float(bv) - zmin)) + args.base
 			)
-			
+
 			c = (
 				t[0] + ((xmin + x + 1) * t[1]) + ((ymin + y) * t[2]),
 				t[3] + ((xmin + x + 1) * t[4]) + ((ymin + y) * t[5]),
 				(zscale * (float(cv) - zmin)) + args.base
 			)
-			
+
 			if not skip(av):
 				a = (
 					t[0] + ((xmin + x) * t[1]) + ((ymin + y) * t[2]),
@@ -352,7 +352,7 @@ with stlwriter(args.STL, facetcount) as mesh:
 					(zscale * (float(av) - zmin)) + args.base
 				)
 				mesh.add_facet((a, b, c))
-			
+
 			if not skip(dv):
 				d = (
 					t[0] + ((xmin + x + 1) * t[1]) + ((ymin + y + 1) * t[2]),
@@ -360,7 +360,7 @@ with stlwriter(args.STL, facetcount) as mesh:
 					(zscale * (float(dv) - zmin)) + args.base
 				)
 				mesh.add_facet((d, c, b))
-		
+
 		# Update progress each row
 		gdal.TermProgress(float(y + 1) / mh)
 
