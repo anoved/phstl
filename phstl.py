@@ -65,7 +65,7 @@ class stlwriter():
 		self.written = 0
 		
 		# write binary stl header with predicted facet count
-		self.f.write('\0' * 80)
+		self.f.write(b'\0' * 80)
 		# (facet count is little endian 4 byte unsigned int)
 		self.f.write(pack('<I', facet_count))
 	
@@ -78,7 +78,7 @@ class stlwriter():
 		for vertex in t:
 			self.f.write(pack('<3f', *vertex))
 		# facet records conclude with two null bytes (unused "attributes")
-		self.f.write('\0\0')
+		self.f.write(b'\0\0')
 		self.written += 1
 	
 	def done(self):
@@ -122,7 +122,7 @@ args = ap.parse_args()
 
 try:
 	img = gdal.Open(args.RASTER)
-except RuntimeError, e:
+except (RuntimeError, e):
 	fail(str(e).strip())
 
 # input raster dimensions
